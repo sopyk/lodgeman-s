@@ -17,7 +17,7 @@ const DURATIONS = [
 const WORDS = '熊猫,火箭,星辰,清风,明月,青山,绿水,阳光,雨露,白云,大海,森林,草原,沙漠,极光,流星,彩虹,闪电,雪花,春风,梧桐,银杏,琥珀,珊瑚,翡翠,珍珠,琉璃,瑞雪,丰收,启航,远山,近水,书签,灯塔,港湾,原野,苍穹,晨曦,暮色,星河'.split(',');
 
 function randomWord() {
-  return WORDS[Math.floor(Math.random() * WORDS.length)] + Math.floor(Math.random() * 100);
+  return WORDS[Math.floor(Math.random() * WORDS.length)] + WORDS[Math.floor(Math.random() * WORDS.length)] + Math.floor(Math.random() * 100);
 }
 
 const OPTS = DURATIONS.map(d =>
@@ -65,7 +65,7 @@ ALERTS
 </form>
 <script>
 var w = ['${WORDS.join("','")}'];
-document.getElementById('labelInput').value = w[Math.floor(Math.random()*w.length)] + Math.floor(Math.random()*100);
+document.getElementById('labelInput').value = w[Math.floor(Math.random()*w.length)] + w[Math.floor(Math.random()*w.length)] + Math.floor(Math.random()*100);
 </script>
 </body></html>`;
 

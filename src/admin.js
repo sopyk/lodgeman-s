@@ -20,8 +20,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .stat-item{background:#fff;border-radius:10px;box-shadow:0 1px 3px rgba(0,0,0,.08);padding:.75rem 1rem;flex:1;min-width:120px;text-align:center}
 .stat-item .num{font-size:1.5rem;font-weight:700;color:#1a1a2e}
 .stat-item .lbl{font-size:.75rem;color:#888;margin-top:.2rem}
-.grid-2{display:grid;grid-template-columns:1.2fr 2fr;gap:1rem}
-@media(max-width:720px){.grid-2{grid-template-columns:1fr}}
+
+
 .form-group{margin-bottom:.75rem}
 .form-group label{display:block;font-size:.8rem;font-weight:500;color:#555;margin-bottom:.25rem}
 .form-group input,.form-group select{width:100%;padding:.45rem .6rem;border:1px solid #d0d0d0;border-radius:6px;font-size:.85rem;outline:none;transition:border-color .15s}
@@ -55,6 +55,24 @@ tr:last-child td{border-bottom:none}
 .back-link:hover{color:#0066ff}
 .auth-col{width:70px}
 .action-col{width:110px}
+.label-display{cursor:pointer;border-bottom:1px dashed #ddd;display:inline-block;min-width:24px;padding:0 2px}
+.label-display:hover{border-bottom-color:#0066ff}
+.label-input{padding:.2rem .35rem;border:1px solid #0066ff;border-radius:4px;font-size:.82rem;width:90px;outline:none}
+.table-wrap{overflow-x:auto;margin-top:.5rem}
+.settings-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;align-items:start}
+@media(max-width:720px){.settings-grid{grid-template-columns:1fr}}
+@media(max-width:640px){
+.page{padding:.5rem}
+.card{padding:.75rem}
+.card h2{font-size:.9rem}
+.nav{gap:.5rem;padding:.5rem .75rem}
+.stat{gap:.5rem}
+.stat-item{min-width:70px;padding:.5rem .75rem}
+.stat-item .num{font-size:1.2rem}
+th,td{padding:.35rem .25rem;font-size:.75rem}
+.auth-col{width:auto}
+.action-col{width:auto}
+}
 `;
 
 function tag(s, ...vals) {
@@ -68,7 +86,7 @@ function page(title, content) {
 }
 
 function navBar() {
-  return `<div class="nav"><a href="/_admin">仪表盘</a><span class="right"><a href="/_admin/logout" style="color:#b91c1c">退出</a></span></div>`;
+  return `<div class="nav"><a href="/_admin">仪表盘</a><a href="/_admin/settings">设置</a><span class="right"><a href="/_admin/logout" style="color:#b91c1c">退出</a></span></div>`;
 }
 
 function h(res, code, title, content) {
@@ -165,6 +183,24 @@ async function handleAdmin(req, res, backend) {
     }
     if (pathname === '/_admin/clear') {
       return clearSessions(req, res, backend);
+    }
+    if (pathname === '/_admin/session/label') {
+      return updateSessionLabel(req, res, backend);
+    }
+    if (pathname === '/_admin/settings') {
+      return renderSettings(req, res, backend);
+    }
+    if (pathname === '/_admin/settings/password') {
+      return changePassword(req, res, backend);
+    }
+    if (pathname === '/_admin/settings/admin') {
+      return changeAdmin(req, res, backend);
+    }
+    if (pathname === '/_admin/routes/export') {
+      return exportRoutes(req, res, backend);
+    }
+    if (pathname === '/_admin/routes/import') {
+      return importRoutes(req, res, backend);
     }
   } catch (err) {
     console.error('Admin error:', err);
@@ -276,7 +312,7 @@ ${er ? `<div style="padding:.3rem .6rem .5rem;background:#fef2f2;font-size:.78re
 
   const sessionRows = allSessions.map(s => `<tr>
 <td><code>${s.id.slice(0, 8)}...</code>${s._type === 'admin' ? ' <span class="badge badge-green" style="font-size:.65rem">管理</span>' : ''}</td>
-<td>${esc(s.label || '')}</td>
+<td>${s._type === 'admin' ? (s.label || '') : `<span class="label-display" data-sid="${s.id}">${esc(s.label || '<span style="color:#bbb">点击添加</span>')}</span>`}</td>
 <td>${s.host || ''}</td>
 <td title="${esc(s.userAgent || '')}">${esc((s.userAgent || '').slice(0, 30))}</td>
 <td>${s.ip || ''}</td>
@@ -285,7 +321,37 @@ ${er ? `<div style="padding:.3rem .6rem .5rem;background:#fef2f2;font-size:.78re
 <td>${s._type === 'admin' ? '<span style="color:#999;font-size:.75rem">—</span>' : `<form method="post" action="/_admin/kick" style="display:inline"><input type="hidden" name="sid" value="${s.id}"><button class="btn btn-sm btn-outline">踢下线</button></form>`}</td>
 </tr>`).join('');
 
-  const addError = !isNaN(editingIdx) && editingIdx >= 0 ? '' : editError;
+  const addRow = `<tr id="addRouteForm" style="display:none"><td colspan="5" style="padding:0;border-bottom:2px solid #0066ff">
+<form method="post" action="/_admin/routes/add" style="display:flex;flex-wrap:wrap;gap:.5rem;padding:.6rem;background:#f8faff;align-items:end">
+<div style="display:flex;flex-direction:column;gap:.2rem;flex:1;min-width:130px">
+<label style="font-size:.7rem;color:#666">Host</label>
+<input name="host" placeholder="svc.example.com" required style="padding:.35rem .5rem;border:1px solid #d0d0d0;border-radius:4px;font-size:.82rem;width:100%">
+</div>
+<div style="display:flex;flex-direction:column;gap:.2rem;flex:1;min-width:130px">
+<label style="font-size:.7rem;color:#666">目标</label>
+<input name="target" placeholder="http://127.0.0.1:8080" required style="padding:.35rem .5rem;border:1px solid #d0d0d0;border-radius:4px;font-size:.82rem;width:100%">
+</div>
+<div style="display:flex;flex-direction:column;gap:.2rem;flex:0 0 90px">
+<label style="font-size:.7rem;color:#666">鉴权</label>
+<select name="auth" style="padding:.35rem .5rem;border:1px solid #d0d0d0;border-radius:4px;font-size:.82rem">
+<option value="true" selected>开</option>
+<option value="false">关</option>
+</select>
+</div>
+<div style="display:flex;flex-direction:column;gap:.2rem;flex:1;min-width:80px">
+<label style="font-size:.7rem;color:#666">描述</label>
+<input name="description" placeholder="My Service" style="padding:.35rem .5rem;border:1px solid #d0d0d0;border-radius:4px;font-size:.82rem;width:100%">
+</div>
+<div style="display:flex;flex-direction:column;gap:.2rem;flex:1;min-width:80px">
+<label style="font-size:.7rem;color:#666">豁免路径</label>
+<input name="auth_exempt" placeholder="/api/*,/health" style="padding:.35rem .5rem;border:1px solid #d0d0d0;border-radius:4px;font-size:.82rem;width:100%">
+</div>
+<div style="display:flex;gap:.3rem;align-items:end;padding-bottom:.15rem">
+<button class="btn btn-sm btn-primary">添加</button>
+<button type="button" class="btn btn-sm btn-outline" onclick="toggleAddRoute()">取消</button>
+</div>
+</form>
+</td></tr>`;
 
   h(res, 200, '仪表盘', `${navBar()}
 ${successMsg ? `<div class="alert alert-success">${esc(successMsg)}</div>` : ''}
@@ -294,26 +360,19 @@ ${successMsg ? `<div class="alert alert-success">${esc(successMsg)}</div>` : ''}
 <div class="stat-item"><div class="num">${allSessions.length}</div><div class="lbl">活跃会话</div></div>
 </div>
 
-<div class="grid-2">
 <div class="card">
-<h2>添加路由</h2>
-${addError ? `<div class="alert alert-error">${esc(addError)}</div>` : ''}
-<form method="post" action="/_admin/routes/add">
-<div class="form-group"><label>Host（域名）</label><input name="host" placeholder="svc.example.com" required></div>
-<div class="form-group"><label>目标地址</label><input name="target" placeholder="http://127.0.0.1:8080" required></div>
-<div class="form-row">
-<div class="form-group" style="flex:2"><label>描述</label><input name="description" placeholder="My Service"></div>
-<div class="form-group" style="flex:1"><label>鉴权</label><select name="auth"><option value="true" selected>需鉴权</option><option value="false">免鉴权</option></select></div>
-</div>
-<div class="form-group"><label>豁免路径（逗号分隔）</label><input name="auth_exempt" placeholder="/api/*,/health"></div>
-<button class="btn btn-primary" style="margin-top:.25rem">添加</button>
-</form>
-</div>
-
-<div class="card">
-<h2>路由列表 <span class="count">(${config.routes.length})</span></h2>
-${routeCards ? `<table><thead><tr><th>Host</th><th>目标</th><th class="auth-col">鉴权</th><th>描述</th><th class="action-col">操作</th></tr></thead><tbody>${routeCards}</tbody></table>` : '<div class="empty">暂无路由</div>'}
-</div>
+<h2 style="display:flex;align-items:center;justify-content:space-between;border-bottom:none;padding-bottom:0;margin-bottom:0">
+<span>路由列表 <span class="count">(${config.routes.length})</span></span>
+<span style="font-size:.8rem;font-weight:400;display:flex;gap:.4rem;align-items:center">
+<a href="/_admin/routes/export" class="btn btn-sm btn-outline" style="text-decoration:none">导出</a>
+<input type="file" accept=".yaml,.yml" style="display:none" id="importFileInput" onchange="importRouteFile(event)">
+<button class="btn btn-sm btn-outline" onclick="document.getElementById('importFileInput').click()">导入</button>
+<span id="importStatus" style="font-size:.75rem;color:#888"></span>
+</span>
+</h2>
+<div class="table-wrap"><table><thead><tr><th>Host</th><th>目标</th><th class="auth-col">鉴权</th><th>描述</th><th class="action-col">操作</th></tr></thead><tbody>${routeCards || '<tr><td colspan="5" style="text-align:center;color:#aaa;padding:1.5rem;font-size:.85rem">暂无路由</td></tr>'}
+<tr id="addRouteToggle"><td colspan="5" style="text-align:center;border-bottom:none;padding:.25rem"><button class="btn btn-sm btn-outline" onclick="toggleAddRoute()" style="color:#0066ff">＋ 添加路由</button></td></tr>${addRow}
+</tbody></table></div>
 </div>
 
 <div class="card">
@@ -325,12 +384,31 @@ ${routeCards ? `<table><thead><tr><th>Host</th><th>目标</th><th class="auth-co
 <form method="post" action="/_admin/config/reload" style="display:inline"><button class="btn btn-sm btn-outline" title="从 routes.yaml 重新读取配置，无需重启服务">重载配置</button></form>
 </span>
 </h2>
-${sessionRows ? `<table class="sessions"><thead><tr><th style="width:13%">会话</th><th style="width:9%">标记</th><th style="width:13%">Host</th><th>设备</th><th style="width:11%">IP</th><th style="width:14%">创建</th><th style="width:14%">过期</th><th style="width:10%">操作</th></tr></thead><tbody>${sessionRows}</tbody></table>` : '<div class="empty" style="margin-top:.5rem">暂无活跃会话</div>'}
+${sessionRows ? `<div class="table-wrap"><table class="sessions"><thead><tr><th style="width:13%">会话</th><th style="width:9%">标记</th><th style="width:13%">Host</th><th>设备</th><th style="width:11%">IP</th><th style="width:14%">创建</th><th style="width:14%">过期</th><th style="width:10%">操作</th></tr></thead><tbody>${sessionRows}</tbody></table></div>` : '<div class="empty" style="margin-top:.5rem">暂无活跃会话</div>'}
 </div>
 <script>
 (function(){var c=0,e=document.getElementById('refreshIndicator');if(e)e.textContent='10s后自动刷新'
 setInterval(function(){c=10-(Date.now()/1000|0)%10;if(e)e.textContent=c+'s后刷新'
 if(location.href.indexOf('_edit')<0&&c<=1){location.reload()}},1000)})();
+document.addEventListener('click',function(e){var t=e.target.closest('.label-display');if(!t||t.tagName==='INPUT')return;
+var sid=t.dataset.sid,val=t.textContent.replace(/^点击添加$/,'');t.innerHTML='<input class="label-input" value="'+val.replace(/"/g,'&quot;')+'">';
+var inp=t.querySelector('input');inp.focus();inp.select();
+function save(){var v=inp.value.trim();var x=new XMLHttpRequest();x.open('POST','/_admin/session/label',true);
+x.setRequestHeader('Content-Type','application/x-www-form-urlencoded');
+x.onload=function(){t.innerHTML=v||'<span style="color:#bbb">点击添加</span>';if(!v)t.innerHTML='<span style="color:#bbb">点击添加</span>'};
+x.send('sid='+encodeURIComponent(sid)+'&label='+encodeURIComponent(v))}
+inp.addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();save();}
+if(e.key==='Escape'){t.innerHTML=val||'<span style="color:#bbb">点击添加</span>'}});
+inp.addEventListener('blur',save)});
+function toggleAddRoute(){var f=document.getElementById('addRouteForm'),t=document.getElementById('addRouteToggle');if(f&&t){var show=f.style.display!='table-row';f.style.display=show?'table-row':'none';t.style.display=show?'none':'table-row';}}
+function importRouteFile(e){var file=e.target.files[0];if(!file)return;
+var st=document.getElementById('importStatus');st.textContent='导入中...';st.style.color='#888';
+var reader=new FileReader();reader.onload=function(){
+var x=new XMLHttpRequest();x.open('POST','/_admin/routes/import',true);
+x.setRequestHeader('Content-Type','application/x-yaml');
+x.onload=function(){try{var r=JSON.parse(x.responseText);if(r.ok){st.textContent='已导入 '+r.count+' 条路由';st.style.color='#166534';setTimeout(function(){location.reload()},1500)}else{st.textContent='导入失败: '+r.error;st.style.color='#b91c1c'}}catch(e){st.textContent='导入失败';st.style.color='#b91c1c'}};
+x.onerror=function(){st.textContent='网络错误';st.style.color='#b91c1c'};
+x.send(reader.result)};reader.readAsText(file);e.target.value=''}
 </script>`);
 }
 
@@ -414,6 +492,74 @@ function deleteRoute(req, res, backend) {
   rd(res, '/_admin');
 }
 
+// ── Route Import/Export ──
+
+function exportRoutes(req, res, backend) {
+  const yaml = require('js-yaml');
+  const doc = { routes: backend.config.routes.map(r => ({
+    host: r.host,
+    target: r.target,
+    auth: r.auth,
+    auth_exempt: r.auth_exempt.length > 0 ? r.auth_exempt : undefined,
+    description: r.description,
+  }))};
+  const yamlStr = yaml.dump(doc, { indent: 2, lineWidth: -1 });
+  res.writeHead(200, {
+    'Content-Type': 'application/x-yaml',
+    'Content-Disposition': 'attachment; filename="routes.yaml"',
+  });
+  res.end(yamlStr);
+}
+
+async function importRoutes(req, res, backend) {
+  const { config } = backend;
+  const ip = req.socket.remoteAddress || '';
+  const body = await readBody(req);
+  try {
+    const yaml = require('js-yaml');
+    let yamlContent = body;
+    const ct = req.headers['content-type'] || '';
+    if (ct.includes('multipart/form-data')) {
+      const boundaryMatch = ct.match(/boundary=(.+?)(?:;|$)/);
+      if (!boundaryMatch) throw new Error('无法解析 multipart boundary');
+      let boundary = boundaryMatch[1].trim();
+      if (boundary.startsWith('"') && boundary.endsWith('"')) boundary = boundary.slice(1, -1);
+      const parts = body.split('--' + boundary);
+      yamlContent = '';
+      for (const part of parts) {
+        if (part.includes('Content-Disposition') && part.includes('name="file"')) {
+          const idx = part.indexOf('\r\n\r\n');
+          if (idx !== -1) yamlContent = part.slice(idx + 4).trim();
+        }
+      }
+      if (!yamlContent) throw new Error('未找到上传文件内容');
+    }
+    const imported = yaml.load(yamlContent);
+    if (!imported || !Array.isArray(imported.routes)) {
+      throw new Error('YAML 中未找到有效的 routes 列表');
+    }
+    const existing = new Map(config.routes.map(r => [r.host, r]));
+    for (const r of imported.routes) {
+      if (!r.host || !r.target) continue;
+      existing.set(r.host, {
+        host: r.host,
+        target: r.target,
+        auth: r.auth !== false,
+        auth_exempt: Array.isArray(r.auth_exempt) ? r.auth_exempt : [],
+        description: r.description || r.host,
+      });
+    }
+    config.routes = [...existing.values()];
+    saveConfig(config);
+    audit('ROUTES_IMPORT', `count=${imported.routes.length}`, ip);
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ ok: true, count: imported.routes.length }));
+  } catch (e) {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ ok: false, error: e.message }));
+  }
+}
+
 // ── Session ops ──
 
 async function kickSession(req, res, backend) {
@@ -440,6 +586,101 @@ function clearSessions(req, res, backend) {
   backend.sessions.clear();
   audit('SESSION_CLEAR', 'all sessions cleared', ip);
   rd(res, '/_admin?msg=' + encodeURIComponent(`已清空 ${count} 个会话`));
+}
+
+async function updateSessionLabel(req, res, backend) {
+  const body = await readBody(req);
+  const params = new URLSearchParams(body);
+  const sid = params.get('sid') || '';
+  const label = (params.get('label') || '').trim();
+  const ip = req.socket.remoteAddress || '';
+  for (const [id, s] of backend.sessions) {
+    if (id.startsWith(sid.replace('...', ''))) {
+      s.label = label;
+      audit('SESSION_LABEL_UPDATE', `sid=${id.slice(0, 8)}... label=${label}`, ip);
+      break;
+    }
+  }
+  res.writeHead(200, { 'Content-Type': 'application/json' });
+  res.end(JSON.stringify({ ok: true }));
+}
+
+// ── Settings ──
+
+function renderSettings(req, res, backend, alert) {
+  if (req.method === 'POST' && !alert) return rd(res, '/_admin/settings');
+  const { config } = backend;
+  h(res, 200, '设置', `${navBar()}
+${alert ? `<div class="alert alert-${alert.type}">${esc(alert.text)}</div>` : ''}
+<div class="settings-grid">
+<div class="card">
+<h2>修改访问密码</h2>
+<form method="post" action="/_admin/settings/password">
+<div class="form-group"><label>当前访问密码</label><input type="password" name="current" required></div>
+<div class="form-group"><label>新访问密码</label><input type="password" name="password" required></div>
+<div class="form-group"><label>确认新密码</label><input type="password" name="confirm" required></div>
+<button class="btn btn-primary">保存</button>
+</form>
+</div>
+<div class="card">
+<h2>修改管理员账号</h2>
+<form method="post" action="/_admin/settings/admin">
+<div class="form-group"><label>当前管理员密码</label><input type="password" name="current" required></div>
+<div class="form-group"><label>新用户名</label><input name="username" value="${esc(config.admin_username)}" required></div>
+<div class="form-group"><label>新密码</label><input type="password" name="password" placeholder="留空则不修改"></div>
+<div class="form-group"><label>确认新密码</label><input type="password" name="confirm" placeholder="留空则不修改"></div>
+<button class="btn btn-primary">保存</button>
+</form>
+</div>
+</div>`);
+}
+
+async function changePassword(req, res, backend) {
+  const body = await readBody(req);
+  const params = new URLSearchParams(body);
+  const { config } = backend;
+  const current = params.get('current') || '';
+  const password = params.get('password') || '';
+  const confirm = params.get('confirm') || '';
+  const ip = req.socket.remoteAddress || '';
+  if (!verifyPassword(current, config.password)) {
+    return renderSettings(req, res, backend, { type: 'error', text: '当前访问密码错误' });
+  }
+  if (password.length < 4) {
+    return renderSettings(req, res, backend, { type: 'error', text: '密码至少 4 位' });
+  }
+  if (password !== confirm) {
+    return renderSettings(req, res, backend, { type: 'error', text: '两次密码不一致' });
+  }
+  config.password = require('./config.js').hashPassword(password);
+  require('./config.js').saveConfig(config);
+  audit('PASSWORD_CHANGE', '', ip);
+  renderSettings(req, res, backend, { type: 'success', text: '访问密码已更新' });
+}
+
+async function changeAdmin(req, res, backend) {
+  const body = await readBody(req);
+  const params = new URLSearchParams(body);
+  const { config } = backend;
+  const current = params.get('current') || '';
+  const username = (params.get('username') || '').trim();
+  const password = params.get('password') || '';
+  const confirm = params.get('confirm') || '';
+  const ip = req.socket.remoteAddress || '';
+  if (!verifyPassword(current, config.admin_password)) {
+    return renderSettings(req, res, backend, { type: 'error', text: '当前管理员密码错误' });
+  }
+  if (!username) {
+    return renderSettings(req, res, backend, { type: 'error', text: '用户名不能为空' });
+  }
+  if (password && password !== confirm) {
+    return renderSettings(req, res, backend, { type: 'error', text: '两次密码不一致' });
+  }
+  config.admin_username = username;
+  if (password) config.admin_password = require('./config.js').hashPassword(password);
+  require('./config.js').saveConfig(config);
+  audit('ADMIN_ACCOUNT_CHANGE', 'username=' + username, ip);
+  renderSettings(req, res, backend, { type: 'success', text: '管理员账号已更新' });
 }
 
 function reloadConfig(req, res, backend) {
