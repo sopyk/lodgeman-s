@@ -2,4 +2,3 @@ node_modules/
 .git/
 *.md
 # assets/ — keep for Docker image
-tests/

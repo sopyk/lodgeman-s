@@ -156,6 +156,8 @@ routes:
 
 ### 管理面板
 
+> **注意**：目标后端仅支持 HTTP 协议（`http://`），不支持 HTTPS、WebSocket 直连或其他协议。
+
 `admin_password` 非空时，访问 `/_admin` 进入管理面板：
 
 - 仪表盘：总览路由数和活跃会话数
@@ -230,7 +232,14 @@ lodgeman-s/
 │   └── favicon.png
 ├── scripts/
 │   └── hash-password.js
+├── docs/
+│   ├── architecture.md
+│   ├── requirements.md
+│   └── progress.md
+├── package.json
 ├── LICENSE
+├── .dockerignore
+├── .gitignore
 └── README.md
 ```
 

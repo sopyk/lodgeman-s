@@ -1,6 +1,6 @@
 const crypto = require('crypto');
 
-const { saveConfig, verifyPassword } = require('./config.js');
+const { saveConfig, verifyPassword, hashPassword } = require('./config.js');
 const { audit } = require('./audit.js');
 
 const adminSessions = new Map();
@@ -61,6 +61,10 @@ tr:last-child td{border-bottom:none}
 .table-wrap{overflow-x:auto;margin-top:.5rem}
 .settings-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;align-items:start}
 @media(max-width:720px){.settings-grid{grid-template-columns:1fr}}
+.taddr-wrap{display:flex;align-items:stretch;border:1px solid #d0d0d0;border-radius:4px;overflow:hidden}
+.taddr-wrap .target-scheme{display:flex;align-items:center;padding:0 .35rem;color:#999;font-size:.75rem;background:#f5f5f5;flex-shrink:0}
+.taddr-wrap .target-input{flex:1;min-width:0;border:none;padding:.35rem .4rem;font-size:.82rem;outline:none}
+.taddr-wrap .target-input:focus{background:#f4f7ff}
 @media(max-width:640px){
 .page{padding:.5rem}
 .card{padding:.75rem}
@@ -134,12 +138,9 @@ function readBody(req) {
 async function handleAdmin(req, res, backend) {
   const { config } = backend;
 
-  if (!config.admin_password) {
-    return h(res, 403, '已禁用', '<div class="card" style="text-align:center;padding:3rem"><h1>403</h1><p style="color:#888;margin-top:.5rem">管理面板已禁用</p></div>');
-  }
-
   const pathname = req.url.split('?')[0];
 
+  // 登录页始终可访问（首次设置管理密码）
   if (pathname === '/_admin/login') {
     return renderLogin(req, res, config);
   }
@@ -155,7 +156,12 @@ async function handleAdmin(req, res, backend) {
     return;
   }
 
-  if (!getAdminSession(req)) {
+  if (!config.admin_password) {
+    // 无管理密码时，有有效会话仍可访问（首次空密码登录后设置密码）
+    if (!getAdminSession(req)) {
+      return h(res, 403, '已禁用', '<div class="card" style="text-align:center;padding:3rem"><h1>403</h1><p style="color:#888;margin-top:.5rem">管理面板已禁用</p></div>');
+    }
+  } else if (!getAdminSession(req)) {
     return rd(res, '/_admin/login');
   }
 
@@ -214,9 +220,79 @@ async function handleAdmin(req, res, backend) {
   h(res, 404, '404', '<div class="card" style="text-align:center;padding:2rem"><h1>404</h1></div>');
 }
 
-// ── Login ──
+// ── Login / Register ──
 
 function renderLogin(req, res, config) {
+  // ── 首次注册（无管理密码） ──
+  if (!config.admin_password) {
+    if (req.method === 'GET') {
+      return h(res, 200, '管理员注册', `<div class="card" style="max-width:380px;margin:3rem auto;padding:2rem">
+<div style="text-align:center;margin-bottom:1rem"><img src="/assets/lodgemans-banner.png" alt="门房大爷LodgeManS" style="max-width:100%;height:auto;border-radius:6px"></div>
+<h1 style="font-size:1.1rem;font-weight:600;margin-bottom:.25rem;text-align:center">门房大爷LodgeManS</h1>
+<p style="text-align:center;color:#888;font-size:.8rem;margin-bottom:0">统一认证网关 管理入口</p>
+<p style="text-align:center;color:#888;font-size:.8rem;margin-bottom:1rem;font-style:italic">首次使用</p>
+<form method="post">
+<div class="form-group"><label>管理员用户名</label><input name="username" value="${esc(config.admin_username)}" autofocus></div>
+<div class="form-group"><label>密码（至少6个字符）</label><input type="password" name="password"></div>
+<div class="form-group"><label>确认密码</label><input type="password" name="confirm"></div>
+<button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:.5rem">注册</button>
+<p style="margin-top:.8rem;font-size:.78rem;color:#999;text-align:center;line-height:1.5">当前未设置管理员密码，请立即设置管理员密码。可以修改用户名。</p>
+</form></div>`);
+    }
+
+    let body = '';
+    req.on('data', c => body += c);
+    req.on('end', () => {
+      const params = new URLSearchParams(body);
+      const username = (params.get('username') || '').trim();
+      const password = params.get('password') || '';
+      const confirm = params.get('confirm') || '';
+
+      const err = !username ? '请输入管理员用户名'
+        : username.length < 2 ? '用户名至少2个字符'
+        : password.length < 6 ? '密码至少6个字符'
+        : password !== confirm ? '两次输入的密码不一致'
+        : null;
+
+      if (err) {
+        return h(res, 200, '管理员注册', `<div class="card" style="max-width:380px;margin:3rem auto;padding:2rem">
+<div style="text-align:center;margin-bottom:1rem"><img src="/assets/lodgemans-banner.png" alt="门房大爷LodgeManS" style="max-width:100%;height:auto;border-radius:6px"></div>
+<h1 style="font-size:1.1rem;font-weight:600;margin-bottom:.25rem;text-align:center">门房大爷LodgeManS</h1>
+<p style="text-align:center;color:#888;font-size:.8rem;margin-bottom:0">统一认证网关 管理入口</p>
+<p style="text-align:center;color:#888;font-size:.8rem;margin-bottom:1rem;font-style:italic">首次使用</p>
+<div class="alert alert-error">${esc(err)}</div>
+<form method="post">
+<div class="form-group"><label>管理员用户名</label><input name="username" value="${esc(username)}" autofocus></div>
+<div class="form-group"><label>密码（至少6个字符）</label><input type="password" name="password"></div>
+<div class="form-group"><label>确认密码</label><input type="password" name="confirm"></div>
+<button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:.5rem">注册</button>
+<p style="margin-top:.8rem;font-size:.78rem;color:#999;text-align:center;line-height:1.5">当前未设置管理员密码，请立即设置管理员密码。可以修改用户名。</p>
+</form></div>`);
+      }
+
+      config.admin_username = username;
+      config.admin_password = hashPassword(password);
+      if (saveConfig(config)) {
+        audit('ADMIN_REGISTER', 'admin=' + username, req.socket.remoteAddress || '');
+        const id = crypto.randomBytes(32).toString('hex');
+        adminSessions.set(id, { createdAt: Date.now(), expiresAt: Date.now() + 4 * 3600000 });
+        res.writeHead(302, {
+          'Location': '/_admin',
+          'Set-Cookie': `${COOKIE_NAME}=${id}; HttpOnly; SameSite=Lax; Path=/; Max-Age=14400`,
+        });
+        res.end();
+      } else {
+        h(res, 200, '管理员注册', `<div class="card" style="max-width:380px;margin:3rem auto;padding:2rem">
+<div style="text-align:center;margin-bottom:1rem"><img src="/assets/lodgemans-banner.png" alt="门房大爷LodgeManS" style="max-width:100%;height:auto;border-radius:6px"></div>
+<h1 style="font-size:1.1rem;font-weight:600;margin-bottom:.25rem;text-align:center">门房大爷LodgeManS</h1>
+<p style="text-align:center;color:#888;font-size:.8rem;margin-bottom:0">统一认证网关 管理入口</p>
+<div class="alert alert-error">保存配置失败，请检查权限</div>
+</div>`);
+      }
+    });
+    return;
+  }
+
   if (req.method === 'GET') {
     return h(res, 200, '管理员登录', `<div class="card" style="max-width:380px;margin:3rem auto;padding:2rem">
 <div style="text-align:center;margin-bottom:1rem"><img src="/assets/lodgemans-banner.png" alt="门房大爷LodgeManS" style="max-width:100%;height:auto;border-radius:6px"></div>
@@ -275,6 +351,7 @@ function renderDashboard(req, res, backend, editingIdx, editError, successMsg) {
   const allSessions = [...active, ...adminActive].sort((a, b) => b.createdAt - a.createdAt);
 
   const routeCards = config.routes.map((r, i) => {
+    const pt = parseTarget(r.target);
     if (editingIdx === i) {
       const er = editError; // may have error msg from query param
       return `<tr><td colspan="5" style="padding:0;border-bottom:2px solid #0066ff">
@@ -283,9 +360,12 @@ function renderDashboard(req, res, backend, editingIdx, editError, successMsg) {
 <label style="font-size:.7rem;color:#666">Host</label>
 <input name="host" value="${esc(r.host)}" required style="padding:.35rem .5rem;border:1px solid #d0d0d0;border-radius:4px;font-size:.82rem;width:100%">
 </div>
-<div style="display:flex;flex-direction:column;gap:.2rem;flex:1;min-width:130px">
-<label style="font-size:.7rem;color:#666">目标</label>
-<input name="target" value="${esc(r.target)}" required style="padding:.35rem .5rem;border:1px solid #d0d0d0;border-radius:4px;font-size:.82rem;width:100%">
+<div style="display:flex;flex-direction:column;gap:.2rem;flex:1;min-width:200px">
+<label style="font-size:.7rem;color:#666">目标 <span style="font-weight:400;color:#999">(仅支持 http)</span></label>
+<div class="taddr-wrap">
+<span class="target-scheme">http://</span>
+<input name="target" class="target-input" value="${esc(r.target.replace(/^https?:\/\//, ''))}" required>
+</div>
 </div>
 <div style="display:flex;flex-direction:column;gap:.2rem;flex:0 0 90px">
 <label style="font-size:.7rem;color:#666">鉴权</label>
@@ -312,7 +392,7 @@ ${er ? `<div style="padding:.3rem .6rem .5rem;background:#fef2f2;font-size:.78re
     }
     return `<tr>
 <td><a href="https://${esc(r.host)}" target="_blank" class="route-host" style="color:#0066ff;text-decoration:none">${esc(r.host)}</a></td>
-<td><span class="route-target">${esc(r.target)}</span></td>
+<td><span class="route-target"><span style="color:#999">http://</span>${esc(pt.addr)}<span style="color:#999">:${pt.port}</span></span></td>
 <td><span class="badge ${r.auth ? 'badge-red' : 'badge-green'}">${r.auth ? '需鉴权' : '免鉴权'}</span></td>
 <td><span class="route-desc">${esc(r.description || '')}</span></td>
 <td><div class="btn-row"><a href="/_admin?_edit=${i}" class="btn btn-sm btn-outline">编辑</a>
@@ -337,9 +417,12 @@ ${er ? `<div style="padding:.3rem .6rem .5rem;background:#fef2f2;font-size:.78re
 <label style="font-size:.7rem;color:#666">Host</label>
 <input name="host" placeholder="svc.example.com" required style="padding:.35rem .5rem;border:1px solid #d0d0d0;border-radius:4px;font-size:.82rem;width:100%">
 </div>
-<div style="display:flex;flex-direction:column;gap:.2rem;flex:1;min-width:130px">
-<label style="font-size:.7rem;color:#666">目标</label>
-<input name="target" placeholder="http://127.0.0.1:8080" required style="padding:.35rem .5rem;border:1px solid #d0d0d0;border-radius:4px;font-size:.82rem;width:100%">
+<div style="display:flex;flex-direction:column;gap:.2rem;flex:1;min-width:200px">
+<label style="font-size:.7rem;color:#666">目标 <span style="font-weight:400;color:#999">(仅支持 http)</span></label>
+<div class="taddr-wrap">
+<span class="target-scheme">http://</span>
+<input name="target" class="target-input" value="127.0.0.1:8080" placeholder="地址:端口" required>
+</div>
 </div>
 <div style="display:flex;flex-direction:column;gap:.2rem;flex:0 0 90px">
 <label style="font-size:.7rem;color:#666">鉴权</label>
@@ -383,6 +466,12 @@ ${successMsg ? `<div class="alert alert-success">${esc(successMsg)}</div>` : ''}
 <div class="table-wrap"><table><thead><tr><th>Host</th><th>目标</th><th class="auth-col">鉴权</th><th>描述</th><th class="action-col">操作</th></tr></thead><tbody>${routeCards || '<tr><td colspan="5" style="text-align:center;color:#aaa;padding:1.5rem;font-size:.85rem">暂无路由</td></tr>'}
 <tr id="addRouteToggle"><td colspan="5" style="text-align:center;border-bottom:none;padding:.25rem"><button class="btn btn-sm btn-outline" onclick="toggleAddRoute()" style="color:#0066ff">＋ 添加路由</button></td></tr>${addRow}
 </tbody></table></div>
+<div style="font-size:.72rem;color:#888;padding:.3rem 0 0;line-height:1.5">
+<strong>目标地址说明：</strong><br>
+当后端与门房大爷在同一网络（裸机、同容器、<code>--network host</code>），地址填 <code>127.0.0.1</code><br>
+当后端在宿主机、门房大爷在 Docker 桥接容器，地址填 <code>host.docker.internal</code><br>
+其他情况填自定义地址（仅支持 http 协议）
+</div>
 </div>
 
 <div class="card">
@@ -426,6 +515,11 @@ function esc(s) {
   return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
+function parseTarget(t) {
+  try { const u = new URL(t); return { addr: u.hostname, port: u.port || '80' } }
+  catch { return { addr: t || '', port: '80' } }
+}
+
 // ── Route CRUD ──
 
 async function addRoute(req, res, backend) {
@@ -433,8 +527,9 @@ async function addRoute(req, res, backend) {
   const params = new URLSearchParams(body);
   const { config } = backend;
   const host = (params.get('host') || '').trim();
-  const target = (params.get('target') || '').trim();
-  if (!host || !target) {
+  const rawTarget = (params.get('target') || '').trim();
+  const target = rawTarget.includes('://') ? rawTarget : `http://${rawTarget}`;
+  if (!host || !rawTarget) {
     return rd(res, '/_admin?error=' + encodeURIComponent('Host 和目标地址不能为空'));
   }
   if (config.routes.some(r => r.host === host)) {
@@ -468,8 +563,9 @@ async function editRoute(req, res, backend) {
   const body = await readBody(req);
   const params = new URLSearchParams(body);
   const host = (params.get('host') || '').trim();
-  const target = (params.get('target') || '').trim();
-  if (!host || !target) {
+  const rawTarget = (params.get('target') || '').trim();
+  const target = rawTarget.includes('://') ? rawTarget : `http://${rawTarget}`;
+  if (!host || !rawTarget) {
     return rd(res, '/_admin?_edit=' + idx + '&error=' + encodeURIComponent('Host 和目标地址不能为空'));
   }
   const dup = config.routes.findIndex((r, i) => r.host === host && i !== idx);
@@ -651,8 +747,8 @@ async function changePassword(req, res, backend) {
   const password = params.get('password') || '';
   const confirm = params.get('confirm') || '';
   const ip = req.socket.remoteAddress || '';
-  if (password.length < 4) {
-    return renderSettings(req, res, backend, { type: 'error', text: '密码至少 4 位' });
+  if (password.length < 6) {
+    return renderSettings(req, res, backend, { type: 'error', text: '密码至少 6 位' });
   }
   if (password !== confirm) {
     return renderSettings(req, res, backend, { type: 'error', text: '两次密码不一致' });
@@ -728,7 +824,7 @@ function renderAbout(req, res, backend) {
 <h2 style="font-size:1.05rem;margin:0 0 .5rem">核心功能</h2>
 <ul style="margin:0 0 1.5rem;padding-left:1.2rem;color:#555;font-size:.85rem;line-height:1.8">
 <li>多站点统一登录认证，一次登录访问所有服务</li>
-<li>请求路由转发，支持目标 URL 和继承域名</li>
+<li>请求路由转发，支持目标 URL 和继承域名（仅 HTTP 后端）</li>
 <li>每条路由独立控制是否启用统一认证——本身带鉴权的服务可以直接放行</li>
 <li>独立管理面板：在线会话管理、配置修改</li>
 <li>管理员 / 普通用户双层权限控制</li>
