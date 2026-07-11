@@ -14,6 +14,8 @@ Many self-hosted services lack built-in authentication. Exposing them directly t
 
 LodgeManS puts a single authentication gate in front of those services. Log in once (cookie-based session), and all protected browser requests pass through automatically — protecting privacy while reducing repetitive logins.
 
+> 🧑‍💻 Built with Vibe Coding
+
 ## 📋 Prerequisites
 
 LodgeManS routes traffic based on the **Host header**; direct IP access is not supported.
