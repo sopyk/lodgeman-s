@@ -1,9 +1,9 @@
 <p align="center">
-  <a href="README.md">中文</a> · <strong>English</strong>
+  <img src="assets/lodgemans-banner.png" alt="门房大爷LodgeManS" width="720">
 </p>
 
 <p align="center">
-  <img src="assets/lodgemans-banner.png" alt="门房大爷LodgeManS" width="720">
+  <a href="README.md">中文</a> · <strong>English</strong>
 </p>
 
 # LodgeManS — Unified Auth Gateway
@@ -14,7 +14,7 @@ Many self-hosted services lack built-in authentication. Exposing them directly t
 
 LodgeManS puts a single authentication gate in front of those services. Log in once (cookie-based session), and all protected browser requests pass through automatically — protecting privacy while reducing repetitive logins.
 
-## Prerequisites
+## 📋 Prerequisites
 
 LodgeManS routes traffic based on the **Host header**; direct IP access is not supported.
 
@@ -26,7 +26,7 @@ Point `*.example.com` to your server IP, access via `http://svc.example.com:4082
 
 Once traffic reaches LodgeManS, add routing rules via the admin panel (`/_admin`) to dispatch requests to different backends by domain.
 
-## Features
+## ✨ Features
 
 | Feature | Description |
 |---------|-------------|
@@ -43,7 +43,7 @@ Once traffic reaches LodgeManS, add routing rules via the admin panel (`/_admin`
 | **Docker support** | Ready-to-use Docker images |
 | **Frontend-agnostic** | Works behind Cloudflare Tunnel, Caddy, Nginx, or directly |
 
-## Quick Start
+## 🚀 Quick Start
 
 ### Bare Metal
 
@@ -92,7 +92,7 @@ curl http://127.0.0.1:4082/_login
 curl http://127.0.0.1:4082/_admin      # requires admin_password to be set
 ```
 
-## Architecture
+## 🏗️ Architecture
 
 ```
 User → *.example.com
@@ -128,7 +128,7 @@ Request arrives → Host header matched to a route
 
 > **When using Cloudflare Tunnel**: Configure the tunnel with a wildcard domain `*.example.com` forwarding to `localhost:4082`, and create a CNAME record for `*.example.com` pointing to the tunnel. See [Cloudflare Tunnel docs](https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/).
 
-## Configuration
+## ⚙️ Configuration
 
 Edit `config/routes.yaml`:
 
@@ -195,14 +195,14 @@ Pre-built images are available on GitHub Container Registry (pending):
 image: ghcr.io/sopyk/lodgeman-s:latest
 ```
 
-## Tech Stack
+## 🛠️ Tech Stack
 
 - **Core**: Node.js native http module, zero runtime dependencies
 - **Config**: YAML (parsed via `js-yaml`)
 - **Auth**: scrypt password hashing + in-memory server sessions + HttpOnly cookies
 - **Proxy**: Native http.request + pipe (WebSocket via upgrade event)
 
-## Security
+## 🔒 Security
 
 - Passwords stored as scrypt hashes, no plaintext in config
 - Cookies: HttpOnly + SameSite=Lax
@@ -211,7 +211,7 @@ image: ghcr.io/sopyk/lodgeman-s:latest
 - Proxy strips Cookie headers to avoid leaking sessions to backends
 - Wildcard path matching for exemptions, preventing accidental bypasses
 
-## Directory
+## 📁 Directory
 
 ```
 lodgeman-s/
@@ -249,6 +249,6 @@ lodgeman-s/
 └── README_EN.md
 ```
 
-## License
+## 📄 License
 
 MIT © [SopyK](https://github.com/sopyk)

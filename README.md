@@ -1,9 +1,9 @@
 <p align="center">
-  <strong>中文</strong> · <a href="README_EN.md">English</a>
+  <img src="assets/lodgemans-banner.png" alt="门房大爷LodgeManS" width="720">
 </p>
 
 <p align="center">
-  <img src="assets/lodgemans-banner.png" alt="门房大爷LodgeManS" width="720">
+  <strong>中文</strong> · <a href="README_EN.md">English</a>
 </p>
 
 # 门房大爷 LodgeManS
@@ -14,7 +14,7 @@
 
 门房大爷就是在这些服务前面加一道大门——统一认证网关。登录一次后（基于 cookie 的 session），所有受保护的浏览器请求自动通过，保护隐私的同时也减少反复登录的麻烦。一个入口，保护多个后端。
 
-## 使用前提
+## 📋 使用前提
 
 门房大爷基于 Host 头进行路由分发，**不支持直接通过 IP 访问**。
 
@@ -26,7 +26,7 @@ DNS `*.example.com` 解析到服务器 IP，直接 `http://svc.example.com:4082`
 
 流量到达门房大爷后，在管理面板（`/_admin`）中添加路由规则即可按域名分发到不同后端。
 
-## 功能
+## ✨ 功能
 
 | 功能 | 说明 |
 |------|------|
@@ -43,7 +43,7 @@ DNS `*.example.com` 解析到服务器 IP，直接 `http://svc.example.com:4082`
 | **Docker 部署** | 支持 Docker 容器化运行 |
 | **前端无关** | 可放在 Cloudflare Tunnel、Caddy、Nginx 后面，或裸连使用 |
 
-## 快速开始
+## 🚀 快速开始
 
 ### 裸机运行
 
@@ -92,7 +92,7 @@ curl http://127.0.0.1:4082/_login
 curl http://127.0.0.1:4082/_admin      # 需先配置 admin_password
 ```
 
-## 架构
+## 🏗️ 架构
 
 ```
 用户访问 *.example.com
@@ -128,7 +128,7 @@ curl http://127.0.0.1:4082/_admin      # 需先配置 admin_password
 
 > **使用 Cloudflare Tunnel 时**：Tunnel 端必须配置泛域名 `*.example.com` 转发到 `localhost:4082`，同时 DNS 中 `*.example.com` 需创建 CNAME 记录指向 Tunnel。具体配置参考 [Cloudflare Tunnel 文档](https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/)。
 
-## 配置
+## ⚙️ 配置
 
 编辑 `config/routes.yaml`：
 
@@ -195,14 +195,14 @@ docker compose -f docker/compose.yaml up -d
 image: ghcr.io/sopyk/lodgeman-s:latest
 ```
 
-## 技术栈
+## 🛠️ 技术栈
 
 - **核心**：Node.js 原生 http 模块，零外部依赖
 - **配置**：YAML（使用 `js-yaml` 解析）
 - **认证**：scrypt 密码哈希 + 服务端内存 session + HttpOnly Cookie
 - **代理**：原生 http.request + pipe（WebSocket 通过 upgrade 事件）
 
-## 安全
+## 🔒 安全
 
 - 密码 scrypt 哈希存储，配置文件不存明文
 - Cookie HttpOnly + SameSite=Lax
@@ -211,7 +211,7 @@ image: ghcr.io/sopyk/lodgeman-s:latest
 - 代理转发时自动删除 Cookie 头，不向后端泄露 session
 - 通配符路径匹配豁免，避免误放行
 
-## 目录
+## 📁 目录
 
 ```
 lodgeman-s/
@@ -249,6 +249,6 @@ lodgeman-s/
 └── README_EN.md
 ```
 
-## 协议
+## 📄 协议
 
 MIT © [SopyK](https://github.com/sopyk)
