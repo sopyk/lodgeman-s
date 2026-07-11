@@ -1,4 +1,8 @@
 <p align="center">
+  <strong>中文</strong> · <a href="README_EN.md">English</a>
+</p>
+
+<p align="center">
   <img src="assets/lodgemans-banner.png" alt="门房大爷LodgeManS" width="720">
 </p>
 
@@ -240,7 +244,9 @@ lodgeman-s/
 ├── LICENSE
 ├── .dockerignore
 ├── .gitignore
-└── README.md
+├── CHANGELOG.md
+├── README.md
+└── README_EN.md
 ```
 
 ## 协议
