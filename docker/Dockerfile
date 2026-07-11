@@ -1,13 +1,17 @@
-FROM nginx:alpine
+FROM alpine:3.21
 
-RUN apk add --no-cache nodejs npm
+RUN apk add --no-cache nodejs npm \
+    && rm -rf /var/cache/apk/* /tmp/*
 
 WORKDIR /app
 
 COPY package*.json ./
-RUN npm install --omit=dev
+RUN npm install --omit=dev && npm cache clean --force
 
-COPY . .
+COPY src/ ./src/
+COPY assets/ ./assets/
+COPY scripts/ ./scripts/
+COPY package.json ./
 
 RUN mkdir -p /app/data
 

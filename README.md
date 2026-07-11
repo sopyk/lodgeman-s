@@ -189,7 +189,7 @@ docker build -t lodgeman-s -f docker/Dockerfile .
 docker compose -f docker/compose.yaml up -d
 ```
 
-预制镜像可在 GitHub Container Registry 获取（待配置）：
+预制镜像可在 GitHub Container Registry 获取：
 
 ```yaml
 image: ghcr.io/sopyk/lodgeman-s:latest

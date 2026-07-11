@@ -1,4 +1,13 @@
 node_modules/
 .git/
+.gitignore
+.dockerignore
 *.md
-# assets/ — keep for Docker image
+docs/
+tests/
+config/
+data/
+scripts/
+docker-compose.yml
+docker/
+LICENSE

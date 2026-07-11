@@ -5,7 +5,7 @@ services:
     build:
       context: ..
       dockerfile: docker/Dockerfile
-    # ── 方式二：使用预制镜像（待推送后启用） ──
+    # ── 方式二：使用预制镜像 ──
     # image: ghcr.io/sopyk/lodgeman-s:latest
     ports:
       - "4082:4082"

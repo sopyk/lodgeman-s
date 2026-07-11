@@ -189,7 +189,7 @@ docker build -t lodgeman-s -f docker/Dockerfile .
 docker compose -f docker/compose.yaml up -d
 ```
 
-Pre-built images are available on GitHub Container Registry (pending):
+Pre-built images are available on GitHub Container Registry:
 
 ```yaml
 image: ghcr.io/sopyk/lodgeman-s:latest
