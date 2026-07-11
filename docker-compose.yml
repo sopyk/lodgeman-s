@@ -1,9 +1,14 @@
 services:
-  auth-proxy:
-    image: auth-proxy:dev
-    container_name: auth-proxy
-    network_mode: host
-    restart: unless-stopped
+  lodgeman-s:
+    container_name: lodgeman-s
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    ports:
+      - "4082:4082"
     volumes:
       - ./config:/app/config
       - ./data:/app/data
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped

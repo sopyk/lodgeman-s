@@ -4,5 +4,7 @@ node_modules/
 .DS_Store
 config/routes.yaml
 data/
-lodgemans-logo.png
-lodgemans-banner.png
+# assets under assets/ dir are tracked; ignore root-level copies
+/lodgemans-logo.png
+/lodgemans-banner.png
+/lodgemans-favicon.jpeg

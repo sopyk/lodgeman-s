@@ -44,9 +44,9 @@ function loadConfig() {
     if (!raw || typeof raw !== 'object') throw new Error('empty config');
     return {
       port: raw.port || DEFAULTS.port,
-      password: raw.password || DEFAULTS.password,
+      password: raw.password ?? DEFAULTS.password,
       admin_username: raw.admin_username || DEFAULTS.admin_username,
-      admin_password: raw.admin_password || DEFAULTS.admin_password,
+      admin_password: raw.admin_password ?? DEFAULTS.admin_password,
       session_max_age: raw.session_max_age || DEFAULTS.session_max_age,
       routes: Array.isArray(raw.routes) ? raw.routes.map(normalizeRoute) : [],
     };

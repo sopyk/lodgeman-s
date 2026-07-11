@@ -26,12 +26,12 @@ const OPTS = DURATIONS.map(d =>
 
 const LOGIN_PAGE = `<!DOCTYPE html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>登录 · 统一认证</title>
+<title>登录 · 门房大爷</title><link rel="icon" href="/assets/favicon.png">
 <style>
 body{font-family:system-ui;display:flex;justify-content:center;align-items:center;height:100vh;margin:0;background:#f5f5f5}
 form{background:#fff;padding:2rem;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,.1);width:360px}
-h1{margin:0 0 .5rem;font-size:1.2rem;color:#333}
-.desc{margin:0 0 1rem;color:#666;font-size:.85rem}
+h1{margin:0 0 .5rem;font-size:1.2rem;color:#333;text-align:center}
+.desc{margin:0 0 1rem;color:#666;font-size:.85rem;text-align:center}
 input,select{width:100%;padding:.5rem;margin:.25rem 0 .6rem;border:1px solid #ddd;border-radius:4px;box-sizing:border-box;font-size:1rem}
 select{font-size:.9rem;background:#fff;cursor:pointer}
 label{display:flex;align-items:center;gap:.4rem;font-size:.85rem;color:#555;margin-bottom:.25rem;cursor:pointer}
@@ -45,14 +45,15 @@ button:hover{background:#0052cc}
 .logged_out{color:#2e7d32;font-size:.85rem;margin:.5rem 0}
 .hint{color:#888;font-size:.75rem;margin:0 0 .6rem 1.3rem;line-height:1.3}
 .sublabel{font-size:.8rem;color:#555;margin:.2rem 0 0}
-.logo{text-align:center;margin-bottom:.5rem}
-.logo img{width:96px;height:auto}
+.banner{text-align:center;margin-bottom:1rem}
+.banner img{max-width:100%;height:auto;border-radius:6px}
 </style></head>
 <body>
 <form method="post">
-<div class="logo"><img src="/assets/lodgemans-logo.png" alt="lodgeman-s"></div>
-<h1>统一认证</h1>
-<p class="desc">登录后访问所有已授权服务</p>
+<div class="banner"><img src="/assets/lodgemans-banner.png" alt="门房大爷LodgeManS"></div>
+<h1 style="font-size:1.3rem">门房大爷LodgeManS</h1>
+<p class="desc">统一认证网关</p>
+<p class="desc" style="font-style:italic">"先来登个记～"</p>
 ALERTS
 <input type="password" name="password" placeholder="密码" autofocus>
 <div class="check-row">
@@ -79,6 +80,16 @@ function getIp(req) {
 function handleAuth(req, res, backend) {
   const { config, sessions } = backend;
   const ip = getIp(req);
+
+  if (!config.password) {
+    const page = LOGIN_PAGE
+      .replace('<form method="post">', '<div>')
+      .replace('ALERTS', '<div class="error" style="margin-bottom:1.5rem;line-height:1.6;text-align:center;font-size:.9rem;padding:.5rem 0">未设置访问密码，无法访问网页，请联系管理员<a href="/_admin/login" style="color:#0066ff;text-decoration:underline">设置</a>访问密码</div>')
+      .replace(/<input[\s\S]*?<\/form>/, '');
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+    res.end(page);
+    return;
+  }
 
   if (req.method === 'POST') {
     let body = '';

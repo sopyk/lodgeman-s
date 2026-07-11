@@ -110,7 +110,7 @@ server.on('upgrade', (req, socket, head) => {
 
 const PORT = config.port;
 server.listen(PORT, '0.0.0.0', () => {
-  console.log(`Unified Auth Proxy → http://127.0.0.1:${PORT}`);
+  console.log(`门房大爷LodgeManS → http://127.0.0.1:${PORT}`);
   console.log(`Routes: ${config.routes.map(r => r.description || r.host).join(', ')}`);
   console.log(`Admin: ${config.admin_password ? 'enabled' : 'disabled'}`);
 });

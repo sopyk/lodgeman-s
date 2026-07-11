@@ -1,7 +1,7 @@
 {
-  "name": "unified-auth-proxy",
+  "name": "lodgeman-s",
   "version": "0.1.0",
-  "description": "统一认证反向代理——用一个登录入口保护多个后端服务",
+  "description": "门房大爷LodgeManS — 统一认证反向代理",
   "main": "src/server.js",
   "private": true,
   "scripts": {

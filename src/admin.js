@@ -12,8 +12,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .card{background:#fff;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,.08);padding:1.25rem;margin-bottom:1rem}
 .card h2{font-size:1rem;font-weight:600;margin:0 0 .8rem;padding-bottom:.5rem;border-bottom:1px solid #eee;display:flex;align-items:center;gap:.4rem}
 .card h2 .count{font-weight:400;color:#888;font-size:.8rem}
-.nav{display:flex;align-items:center;gap:.75rem;padding:.6rem 1rem;background:#fff;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,.08);margin-bottom:1rem}
-.nav a{color:#0066ff;text-decoration:none;font-size:.85rem;font-weight:500}
+.nav{display:flex;align-items:center;gap:1rem;padding:1rem 1.25rem;background:#fff;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,.08);margin-bottom:1rem}
+.nav a{color:#0066ff;text-decoration:none;font-size:1rem;font-weight:500}
 .nav a:hover{text-decoration:underline}
 .nav .right{margin-left:auto;color:#888;font-size:.8rem;display:flex;align-items:center;gap:.5rem}
 .stat{display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:1rem}
@@ -65,7 +65,8 @@ tr:last-child td{border-bottom:none}
 .page{padding:.5rem}
 .card{padding:.75rem}
 .card h2{font-size:.9rem}
-.nav{gap:.5rem;padding:.5rem .75rem}
+.nav{gap:.6rem;padding:.75rem .85rem}
+.nav a{font-size:1rem}
 .stat{gap:.5rem}
 .stat-item{min-width:70px;padding:.5rem .75rem}
 .stat-item .num{font-size:1.2rem}
@@ -82,11 +83,11 @@ function tag(s, ...vals) {
 }
 
 function page(title, content) {
-  return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title} · 统一认证</title><style>${CSS}</style></head><body><div class="page">${content}</div></body></html>`;
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title} · 门房大爷</title><link rel="icon" href="/assets/favicon.png"><style>${CSS}</style></head><body><div class="page">${content}</div></body></html>`;
 }
 
 function navBar() {
-  return `<div class="nav"><img src="/assets/lodgemans-logo.png" alt="" style="height:22px;width:22px"><a href="/_admin">仪表盘</a><a href="/_admin/settings">设置</a><a href="/_admin/about">关于</a><span class="right"><a href="/_admin/logout" style="color:#b91c1c">退出</a></span></div>`;
+  return `<div class="nav"><img src="/assets/lodgemans-logo.png" alt="" style="height:36px;width:36px"><a href="/_admin">仪表盘</a><a href="/_admin/settings">设置</a><a href="/_admin/about">关于</a><span class="right"><a href="/_admin/logout" style="color:#b91c1c">退出</a></span></div>`;
 }
 
 function h(res, code, title, content) {
@@ -218,7 +219,10 @@ async function handleAdmin(req, res, backend) {
 function renderLogin(req, res, config) {
   if (req.method === 'GET') {
     return h(res, 200, '管理员登录', `<div class="card" style="max-width:380px;margin:3rem auto;padding:2rem">
-<h1 style="font-size:1.1rem;font-weight:600;margin-bottom:1rem;text-align:center">管理员登录</h1>
+<div style="text-align:center;margin-bottom:1rem"><img src="/assets/lodgemans-banner.png" alt="门房大爷LodgeManS" style="max-width:100%;height:auto;border-radius:6px"></div>
+<h1 style="font-size:1.1rem;font-weight:600;margin-bottom:.25rem;text-align:center">门房大爷LodgeManS</h1>
+<p style="text-align:center;color:#888;font-size:.8rem;margin-bottom:0">统一认证网关 管理入口</p>
+<p style="text-align:center;color:#888;font-size:.8rem;margin-bottom:1rem;font-style:italic">"领导回来啦～"</p>
 <form method="post">
 <div class="form-group"><label>用户名</label><input name="username" autofocus></div>
 <div class="form-group"><label>密码</label><input type="password" name="password"></div>
@@ -247,7 +251,10 @@ function renderLogin(req, res, config) {
       res.end();
     } else {
       h(res, 200, '管理员登录', `<div class="card" style="max-width:380px;margin:3rem auto;padding:2rem">
-<h1 style="font-size:1.1rem;font-weight:600;margin-bottom:1rem;text-align:center">管理员登录</h1>
+<div style="text-align:center;margin-bottom:1rem"><img src="/assets/lodgemans-banner.png" alt="门房大爷LodgeManS" style="max-width:100%;height:auto;border-radius:6px"></div>
+<h1 style="font-size:1.1rem;font-weight:600;margin-bottom:.25rem;text-align:center">门房大爷LodgeManS</h1>
+<p style="text-align:center;color:#888;font-size:.8rem;margin-bottom:0">统一认证网关 管理入口</p>
+<p style="text-align:center;color:#888;font-size:.8rem;margin-bottom:1rem;font-style:italic">"领导回来啦～"</p>
 <div class="alert alert-error">用户名或密码错误</div>
 <form method="post">
 <div class="form-group"><label>用户名</label><input name="username" value="${esc(params.get('username') || '')}" autofocus></div>
@@ -304,7 +311,7 @@ ${er ? `<div style="padding:.3rem .6rem .5rem;background:#fef2f2;font-size:.78re
 </td></tr>`;
     }
     return `<tr>
-<td><span class="route-host">${esc(r.host)}</span></td>
+<td><a href="https://${esc(r.host)}" target="_blank" class="route-host" style="color:#0066ff;text-decoration:none">${esc(r.host)}</a></td>
 <td><span class="route-target">${esc(r.target)}</span></td>
 <td><span class="badge ${r.auth ? 'badge-red' : 'badge-green'}">${r.auth ? '需鉴权' : '免鉴权'}</span></td>
 <td><span class="route-desc">${esc(r.description || '')}</span></td>
@@ -392,7 +399,7 @@ ${sessionRows ? `<div class="table-wrap"><table class="sessions"><thead><tr><th 
 <script>
 (function(){var c=0,e=document.getElementById('refreshIndicator');if(e)e.textContent='10s后自动刷新'
 setInterval(function(){c=10-(Date.now()/1000|0)%10;if(e)e.textContent=c+'s后刷新'
-if(location.href.indexOf('_edit')<0&&c<=1){location.reload()}},1000)})();
+var addForm=document.getElementById('addRouteForm');if(location.href.indexOf('_edit')<0&&(!addForm||addForm.style.display!='table-row')&&c<=1){location.reload()}},1000)})();
 document.addEventListener('click',function(e){var t=e.target.closest('.label-display');if(!t||t.tagName==='INPUT')return;
 var sid=t.dataset.sid,val=t.textContent.replace(/^点击添加$/,'');t.innerHTML='<input class="label-input" value="'+val.replace(/"/g,'&quot;')+'">';
 var inp=t.querySelector('input');inp.focus();inp.select();
@@ -619,7 +626,6 @@ ${alert ? `<div class="alert alert-${alert.type}">${esc(alert.text)}</div>` : ''
 <div class="card">
 <h2>修改访问密码</h2>
 <form method="post" action="/_admin/settings/password">
-<div class="form-group"><label>当前访问密码</label><input type="password" name="current" required></div>
 <div class="form-group"><label>新访问密码</label><input type="password" name="password" required></div>
 <div class="form-group"><label>确认新密码</label><input type="password" name="confirm" required></div>
 <button class="btn btn-primary">保存</button>
@@ -642,13 +648,9 @@ async function changePassword(req, res, backend) {
   const body = await readBody(req);
   const params = new URLSearchParams(body);
   const { config } = backend;
-  const current = params.get('current') || '';
   const password = params.get('password') || '';
   const confirm = params.get('confirm') || '';
   const ip = req.socket.remoteAddress || '';
-  if (!verifyPassword(current, config.password)) {
-    return renderSettings(req, res, backend, { type: 'error', text: '当前访问密码错误' });
-  }
   if (password.length < 4) {
     return renderSettings(req, res, backend, { type: 'error', text: '密码至少 4 位' });
   }
@@ -705,31 +707,55 @@ function renderAbout(req, res, backend) {
 <div style="text-align:center;margin-bottom:1rem">
 <img src="/assets/lodgemans-banner.png" alt="lodgeman-s" style="max-width:100%;height:auto;border-radius:8px">
 </div>
-<h1 style="font-size:1.5rem;margin:0 0 .25rem">lodgeman-s</h1>
-<p style="color:#666;font-size:.85rem;margin:0 0 1.5rem">轻量统一认证反向代理</p>
+<h1 style="font-size:1.5rem;margin:0 0 .25rem">门房大爷LodgeManS</h1>
+<p style="color:#666;font-size:.85rem;margin:0 0 1.5rem">统一认证网关</p>
 <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.5rem">
 <div class="stat-item"><div class="num">v2.0-dev</div><div style="font-size:.8rem;color:#888">当前版本</div></div>
 <div class="stat-item"><div class="num">MIT</div><div style="font-size:.8rem;color:#888">开源许可</div></div>
 </div>
+<h2 style="font-size:1.05rem;margin:0 0 .5rem">项目信息</h2>
+<p style="color:#555;font-size:.85rem;line-height:1.6;margin:0 0 .75rem">
+很多自建服务本身不带鉴权，反代后直接暴露在公网，有信息泄露之顾虑。
+门房大爷就是在这些服务前面加一道大门——统一认证网关。
+登录一次后，所有受保护的浏览器请求自动通过，保护隐私的同时也减少反复登录的麻烦。
+</p>
+<p style="color:#555;font-size:.85rem;line-height:1.6;margin:0 0 .25rem">
+项目地址：<a href="https://github.com/sopyk/lodgeman-s" target="_blank" style="color:#0066ff">https://github.com/sopyk/lodgeman-s</a>
+</p>
+<p style="color:#555;font-size:.85rem;line-height:1.6;margin:0 0 1rem">
+问题反馈：<a href="https://github.com/sopyk/lodgeman-s/issues" target="_blank" style="color:#0066ff">https://github.com/sopyk/lodgeman-s/issues</a>
+</p>
 <h2 style="font-size:1.05rem;margin:0 0 .5rem">核心功能</h2>
 <ul style="margin:0 0 1.5rem;padding-left:1.2rem;color:#555;font-size:.85rem;line-height:1.8">
 <li>多站点统一登录认证，一次登录访问所有服务</li>
 <li>请求路由转发，支持目标 URL 和继承域名</li>
+<li>每条路由独立控制是否启用统一认证——本身带鉴权的服务可以直接放行</li>
 <li>独立管理面板：在线会话管理、配置修改</li>
 <li>管理员 / 普通用户双层权限控制</li>
 <li>配置导入导出，支持 YAML 合并</li>
 <li>登录会话时长可选，记住状态</li>
 <li>会话备注名自动生成，轻松识别不同登录</li>
 </ul>
-<h2 style="font-size:1.05rem;margin:0 0 .5rem">项目信息</h2>
-<p style="color:#555;font-size:.85rem;line-height:1.6;margin:0 0 1rem">
-lodgeman-s 是一个轻量级统一认证反向代理工具，基于 Node.js 构建，
-为内网多个 Web 服务提供统一的登录认证和反向代理功能。
+<h2 style="font-size:1.05rem;margin:1.5rem 0 .5rem">部署说明</h2>
+<p style="color:#555;font-size:.85rem;line-height:1.6;margin:0 0 .75rem">
+<strong>门房大爷本身不带 TLS 终止功能，只是一个统一认证网关。</strong>
+它基于 Host 头进行路由分发，需要在前面挂载反代（Nginx / Caddy / Cloudflare Tunnel）处理 HTTPS。
 </p>
-<div style="display:flex;gap:.75rem;flex-wrap:wrap">
-<a class="btn" href="https://github.com/sopyk/lodgeman-s" target="_blank" style="text-decoration:none">GitHub 仓库</a>
-<a class="btn" href="https://github.com/sopyk/lodgeman-s/issues" target="_blank" style="text-decoration:none">问题反馈</a>
-</div>
+<p style="color:#555;font-size:.85rem;line-height:1.6;margin:0 0 .75rem">
+推荐架构：
+</p>
+<pre style="background:#f5f5f5;padding:.6rem;border-radius:4px;font-size:.78rem;line-height:1.5;overflow-x:auto;margin:0 0 .75rem;color:#333">
+用户 → HTTPS → 反代（TLS 终止）→ HTTP :4082 → 门房大爷 → 后端服务
+</pre>
+<p style="color:#555;font-size:.85rem;line-height:1.6;margin:0 0 .25rem">
+方式一（推荐）：Nginx / Caddy / Cloudflare Tunnel 监听 80/443，将泛域名流量转发到 <code>:4082</code>，访问无需端口号。
+</p>
+<p style="color:#555;font-size:.85rem;line-height:1.6;margin:0 0 .75rem">
+方式二：DNS <code>*.example.com</code> 解析到服务器 IP，直接 <code>http://svc.example.com:4082</code> 访问（需开放 4082 端口）。
+</p>
+<p style="color:#555;font-size:.85rem;line-height:1.6;margin:0 0 .25rem">
+详细配置请参考 <a href="https://github.com/sopyk/lodgeman-s?tab=readme-ov-file#使用前提" target="_blank" style="color:#0066ff">README 前置反代说明</a>。
+</p>
 </div>`);
 }
 

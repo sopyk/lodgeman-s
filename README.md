@@ -1,23 +1,26 @@
-# Unified Auth Proxy
+<p align="center">
+  <img src="assets/lodgemans-banner.png" alt="门房大爷LodgeManS" width="720">
+</p>
 
-统一认证反向代理——**一个登录入口，保护多个后端服务**。
+# 门房大爷 LodgeManS
 
-让多个没有登录功能的内部 Web 服务（Open WebUI、AnythingLLM、Code Server……）共用一套 cookie 认证，一次登录到处用。
+统一认证网关——**一个登录入口，保护多个后端服务**。
 
-## 为什么需要这个？
+很多自建服务本身不带鉴权，反代后直接暴露在公网，有信息泄露之顾虑。逐个配 Nginx Basic Auth 很麻烦，iPhone 桌面快捷方式每次都要输密码更痛苦。
 
-```
-服务搭建多了之后：
+门房大爷就是在这些服务前面加一道大门——统一认证网关。登录一次后（基于 cookie 的 session），所有受保护的浏览器请求自动通过，保护隐私的同时也减少反复登录的麻烦。一个入口，保护多个后端。
 
-┌─ Open WebUI (:8080)      ─→ 无鉴权，裸奔
-├─ Code Server (:8443)     ─→ 自带密码但每次都要输
-├─ AnythingLLM (:3001)     ─→ 无鉴权，靠反向代理 Basic Auth
-└─ pgAdmin (:5050)         ─→ 也有一套自己的登录
-                          ─→ 暴露到公网就要分别保护
-```
+## 使用前提
 
-每一个都配 Nginx Basic Auth 很麻烦，iPhone 桌面快捷方式每次都要输密码更痛苦。
-**Unified Auth Proxy** 在前端部署一个统一入口，根据域名分派到不同的后端，登录一次管全部。
+门房大爷基于 Host 头进行路由分发，**不支持直接通过 IP 访问**。
+
+**方式一：前置反代（推荐）**  
+Nginx / Caddy / Cloudflare Tunnel 监听 80/443，将泛域名流量转发到 `:4082`，访问无需端口号。
+
+**方式二：DNS + 端口**  
+DNS `*.example.com` 解析到服务器 IP，直接 `http://svc.example.com:4082` 访问（需开放 4082 端口）。
+
+流量到达门房大爷后，在管理面板（`/_admin`）中添加路由规则即可按域名分发到不同后端。
 
 ## 功能
 
@@ -25,6 +28,7 @@
 |------|------|
 | **Host 路由** | 根据域名分发到不同后端（`svc1.example.com → :8080`） |
 | **Cookie 认证** | 一次登录，所有受保护服务通用 |
+| **认证开关** | 每条路由独立控制是否启用统一认证——本身带鉴权的服务可直接放行 |
 | **路径豁免** | 部分路径跳过鉴权（`/api/*`、`/health`），让后端自管 |
 | **WebSocket** | 完整 WebSocket 代理支持 |
 | **管理面板** | 浏览器内管理路由、查看活跃会话、踢人、重载配置 |
@@ -34,6 +38,55 @@
 | **会话备注** | 登录时可填备注名，方便管理后台识别 |
 | **Docker 部署** | 支持 Docker 容器化运行 |
 | **前端无关** | 可放在 Cloudflare Tunnel、Caddy、Nginx 后面，或裸连使用 |
+
+## 快速开始
+
+### 裸机运行
+
+```bash
+git clone https://github.com/sopyk/lodgeman-s.git
+cd lodgeman-s
+npm install
+
+cp config/routes.example.yaml config/routes.yaml
+# 编辑 routes.yaml，设置 password，添加你的路由
+
+node src/server.js
+```
+
+### Docker 运行
+
+```bash
+# 构建镜像
+docker build -t lodgeman-s -f docker/Dockerfile .
+
+# 运行（桥接模式，推荐）
+docker run -d \
+  --name lodgeman-s \
+  -p 4082:4082 \
+  --add-host host.docker.internal:host-gateway \
+  -v $(pwd)/config:/app/config \
+  -v $(pwd)/data:/app/data \
+  lodgeman-s
+```
+
+> 桥接模式下，routes.yaml 中的 `127.0.0.1` 地址无法访问宿主机服务。
+> 需将目标地址改为 `host.docker.internal`（已通过 `--add-host` 解析），
+> 如 `target: http://host.docker.internal:8080`。
+> 也可用 `--network host` 模式直接使用 `127.0.0.1`，但隔离性较差。
+
+推荐使用 Docker Compose（详见 [`docker/compose.yaml`](docker/compose.yaml)）：
+
+```bash
+docker compose -f docker/compose.yaml up -d
+```
+
+### 验证
+
+```bash
+curl http://127.0.0.1:4082/_login
+curl http://127.0.0.1:4082/_admin      # 需先配置 admin_password
+```
 
 ## 架构
 
@@ -48,7 +101,7 @@
          │ HTTP :4082
          ▼
   ┌─────────────────────────────────┐
-  │   Unified Auth Proxy (:4082)     │
+  │   门房大爷 LodgeManS (:4082)     │  统一认证网关
   │                                  │
   │  svc1.example.com  → 鉴权 → :8080│
   │  svc2.example.com  → 鉴权 → :3001│
@@ -66,62 +119,10 @@
          ├─ auth: true + 有效 session → 代理（删除 Cookie 头）
          └─ auth: true + 无 session
               ├─ Accept: application/json → 401 JSON
-              └─ 浏览器访问 → 302 /_login
+               └─ 浏览器访问 → 302 /_login
 ```
 
-## 快速开始
-
-### 裸机运行
-
-```bash
-git clone <repo>
-cd unified-auth-proxy
-npm install
-
-cp config/routes.example.yaml config/routes.yaml
-# 编辑 routes.yaml，设置 password，添加你的路由
-
-node src/server.js
-```
-
-### Docker 运行
-
-```bash
-# 构建
-docker build -t unified-auth-proxy .
-
-# 运行（挂载配置和数据目录）
-docker run -d \
-  --name auth-proxy \
-  -p 4082:4082 \
-  -v $(pwd)/config:/app/config \
-  -v $(pwd)/data:/app/data \
-  unified-auth-proxy
-```
-
-推荐使用 Docker Compose：
-
-```yaml
-services:
-  auth-proxy:
-    build: .
-    ports:
-      - "4082:4082"
-    volumes:
-      - ./config:/app/config
-      - ./data:/app/data
-    restart: unless-stopped
-```
-
-### 验证
-
-```bash
-# 测试登录页
-curl http://127.0.0.1:4082/_login
-
-# 测试管理面板（需先配置 admin_password）
-curl http://127.0.0.1:4082/_admin
-```
+> **使用 Cloudflare Tunnel 时**：Tunnel 端必须配置泛域名 `*.example.com` 转发到 `localhost:4082`，同时 DNS 中 `*.example.com` 需创建 CNAME 记录指向 Tunnel。具体配置参考 [Cloudflare Tunnel 文档](https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/)。
 
 ## 配置
 
@@ -160,6 +161,8 @@ routes:
 - 仪表盘：总览路由数和活跃会话数
 - 路由管理：查看、添加、编辑、删除路由（编辑在原位行内切换为表单，不跳页）
 - 会话管理：查看在线用户（含 IP、设备、备注、时长），踢人，清空
+- 设置：修改访问密码和管理员账号
+- 配置导入导出（YAML 合并导入）
 - 配置重载：从 YAML 文件重新加载（无需重启进程）
 
 ### 路径豁免
@@ -170,32 +173,21 @@ routes:
 - WebSocket（`/ws`）：部分 WS 客户端不方便带 cookie
 - 健康检查（`/health`）：监控系统探测
 
-## 登录页面
+### Docker 构建说明
 
-- 纯简约风格，无外部依赖
-- 支持选择**会话时长**（15 分钟 / 1 小时 / 6 小时 / 24 小时 / 7 天 / 15 天 / 30 天 / 永久）
-- 支持填写**备注名**（随机预填一个中文词 + 数字，方便后台识别）
-- "保持登录"复选框（不勾选则关闭浏览器后 session 失效）
-- 公共场所安全提示
+```bash
+# 从项目根目录构建（需要 assets/ 目录）
+docker build -t lodgeman-s -f docker/Dockerfile .
 
-## 审计日志
+# 使用预制镜像
+docker compose -f docker/compose.yaml up -d
+```
 
-所有关键事件记录在 `data/audit.log`：
+预制镜像可在 GitHub Container Registry 获取（待配置）：
 
-| 事件 | 说明 |
-|------|------|
-| `LOGIN_OK` | 用户登录成功 |
-| `LOGIN_FAIL` | 用户登录失败 |
-| `LOGOUT` | 用户退出登录 |
-| `ADMIN_LOGIN_OK` | 管理员登录成功 |
-| `ADMIN_LOGOUT` | 管理员退出 |
-| `ROUTE_ADD` | 新增路由 |
-| `ROUTE_EDIT` | 编辑路由 |
-| `ROUTE_DEL` | 删除路由 |
-| `SESSION_KICK` | 踢下线 |
-| `SESSION_CLEAR` | 清空所有会话 |
-| `CONFIG_RELOAD` | 重载配置 |
-| `CONFIG_RELOAD_FAIL` | 重载配置失败 |
+```yaml
+image: ghcr.io/sopyk/lodgeman-s:latest
+```
 
 ## 技术栈
 
@@ -216,7 +208,7 @@ routes:
 ## 目录
 
 ```
-unified-auth-proxy/
+lodgeman-s/
 ├── src/
 │   ├── server.js      # 入口，路由分发
 │   ├── auth.js        # 登录页、session、Cookie
@@ -229,15 +221,19 @@ unified-auth-proxy/
 │   └── routes.example.yaml # 配置示例
 ├── data/
 │   └── audit.log     # 审计日志
+├── docker/
+│   ├── Dockerfile
+│   └── compose.yaml
+├── assets/
+│   ├── lodgemans-banner.png
+│   ├── lodgemans-logo.png
+│   └── favicon.png
 ├── scripts/
-│   └── hash-password.js # 密码哈希 CLI
-├── docs/
-│   └── architecture.md
-├── Dockerfile
-├── package.json
+│   └── hash-password.js
+├── LICENSE
 └── README.md
 ```
 
 ## 协议
 
-MIT
+MIT © [SopyK](https://github.com/sopyk)

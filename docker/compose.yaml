@@ -1,0 +1,29 @@
+services:
+  lodgeman-s:
+    container_name: lodgeman-s
+    # ── 方式一：从源码构建 ──
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    # ── 方式二：使用预制镜像（待推送后启用） ──
+    # image: ghcr.io/sopyk/lodgeman-s:latest
+    ports:
+      - "4082:4082"
+    volumes:
+      # 配置目录（选择一种）：
+      # 1. bind mount（配置在宿主机上，方便编辑）
+      - ../config:/app/config
+      # 2. named volume（配置由 Docker 管理）
+      # - config-data:/app/config
+      #
+      # 数据目录（审计日志）：
+      - ../data:/app/data
+      # - data:/app/data
+    extra_hosts:
+      # 桥接模式下访问宿主机服务（routes.yaml 中的 127.0.0.1 地址）
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+
+# volumes:
+#   config-data:
+#   data:
