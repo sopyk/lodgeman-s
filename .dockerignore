@@ -7,7 +7,6 @@ docs/
 tests/
 config/
 data/
-scripts/
 docker-compose.yml
 docker/
 LICENSE
