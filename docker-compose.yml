@@ -1,0 +1,9 @@
+services:
+  auth-proxy:
+    image: auth-proxy:dev
+    container_name: auth-proxy
+    network_mode: host
+    restart: unless-stopped
+    volumes:
+      - ./config:/app/config
+      - ./data:/app/data

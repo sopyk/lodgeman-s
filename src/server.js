@@ -1,4 +1,6 @@
 const http = require('http');
+const fs = require('fs');
+const path = require('path');
 
 const { loadConfig, matchRoute, isPathExempt, upgradePlaintextConfig } = require('./config.js');
 const { handleAuth, getSession, parseCookies } = require('./auth.js');
@@ -50,6 +52,21 @@ const server = http.createServer((req, res) => {
     return handleAdmin(req, res, backend);
   }
 
+  if (req.url.startsWith('/assets/')) {
+    const filePath = path.join(__dirname, '..', req.url);
+    const ext = path.extname(filePath).toLowerCase();
+    const mime = { '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.gif': 'image/gif', '.svg': 'image/svg+xml', '.ico': 'image/x-icon', '.webp': 'image/webp' };
+    try {
+      const data = fs.readFileSync(filePath);
+      res.writeHead(200, { 'Content-Type': mime[ext] || 'application/octet-stream', 'Cache-Control': 'max-age=86400' });
+      res.end(data);
+    } catch {
+      res.writeHead(404, { 'Content-Type': 'text/plain' });
+      res.end('Not Found');
+    }
+    return;
+  }
+
   const route = matchRoute(config, host);
   if (!route) {
     res.writeHead(404, { 'Content-Type': 'text/plain' });
@@ -92,7 +109,7 @@ server.on('upgrade', (req, socket, head) => {
 });
 
 const PORT = config.port;
-server.listen(PORT, '127.0.0.1', () => {
+server.listen(PORT, '0.0.0.0', () => {
   console.log(`Unified Auth Proxy → http://127.0.0.1:${PORT}`);
   console.log(`Routes: ${config.routes.map(r => r.description || r.host).join(', ')}`);
   console.log(`Admin: ${config.admin_password ? 'enabled' : 'disabled'}`);

@@ -4,3 +4,5 @@ node_modules/
 .DS_Store
 config/routes.yaml
 data/
+lodgemans-logo.png
+lodgemans-banner.png

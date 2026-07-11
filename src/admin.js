@@ -86,7 +86,7 @@ function page(title, content) {
 }
 
 function navBar() {
-  return `<div class="nav"><a href="/_admin">仪表盘</a><a href="/_admin/settings">设置</a><span class="right"><a href="/_admin/logout" style="color:#b91c1c">退出</a></span></div>`;
+  return `<div class="nav"><img src="/assets/lodgemans-logo.png" alt="" style="height:22px;width:22px"><a href="/_admin">仪表盘</a><a href="/_admin/settings">设置</a><a href="/_admin/about">关于</a><span class="right"><a href="/_admin/logout" style="color:#b91c1c">退出</a></span></div>`;
 }
 
 function h(res, code, title, content) {
@@ -201,6 +201,9 @@ async function handleAdmin(req, res, backend) {
     }
     if (pathname === '/_admin/routes/import') {
       return importRoutes(req, res, backend);
+    }
+    if (pathname === '/_admin/about') {
+      return renderAbout(req, res, backend);
     }
   } catch (err) {
     console.error('Admin error:', err);
@@ -694,6 +697,40 @@ function reloadConfig(req, res, backend) {
     audit('CONFIG_RELOAD_FAIL', e.message, ip);
     h(res, 200, '仪表盘', `${navBar()}<div class="card" style="text-align:center;padding:2rem"><div class="alert alert-error">重载失败: ${e.message}</div></div>`);
   }
+}
+
+function renderAbout(req, res, backend) {
+  h(res, 200, '关于', `${navBar()}
+<div class="card" style="max-width:720px;margin:0 auto">
+<div style="text-align:center;margin-bottom:1rem">
+<img src="/assets/lodgemans-banner.png" alt="lodgeman-s" style="max-width:100%;height:auto;border-radius:8px">
+</div>
+<h1 style="font-size:1.5rem;margin:0 0 .25rem">lodgeman-s</h1>
+<p style="color:#666;font-size:.85rem;margin:0 0 1.5rem">轻量统一认证反向代理</p>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.5rem">
+<div class="stat-item"><div class="num">v2.0-dev</div><div style="font-size:.8rem;color:#888">当前版本</div></div>
+<div class="stat-item"><div class="num">MIT</div><div style="font-size:.8rem;color:#888">开源许可</div></div>
+</div>
+<h2 style="font-size:1.05rem;margin:0 0 .5rem">核心功能</h2>
+<ul style="margin:0 0 1.5rem;padding-left:1.2rem;color:#555;font-size:.85rem;line-height:1.8">
+<li>多站点统一登录认证，一次登录访问所有服务</li>
+<li>请求路由转发，支持目标 URL 和继承域名</li>
+<li>独立管理面板：在线会话管理、配置修改</li>
+<li>管理员 / 普通用户双层权限控制</li>
+<li>配置导入导出，支持 YAML 合并</li>
+<li>登录会话时长可选，记住状态</li>
+<li>会话备注名自动生成，轻松识别不同登录</li>
+</ul>
+<h2 style="font-size:1.05rem;margin:0 0 .5rem">项目信息</h2>
+<p style="color:#555;font-size:.85rem;line-height:1.6;margin:0 0 1rem">
+lodgeman-s 是一个轻量级统一认证反向代理工具，基于 Node.js 构建，
+为内网多个 Web 服务提供统一的登录认证和反向代理功能。
+</p>
+<div style="display:flex;gap:.75rem;flex-wrap:wrap">
+<a class="btn" href="https://github.com/sopyk/lodgeman-s" target="_blank" style="text-decoration:none">GitHub 仓库</a>
+<a class="btn" href="https://github.com/sopyk/lodgeman-s/issues" target="_blank" style="text-decoration:none">问题反馈</a>
+</div>
+</div>`);
 }
 
 module.exports = { handleAdmin };

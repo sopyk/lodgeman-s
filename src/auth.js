@@ -45,9 +45,12 @@ button:hover{background:#0052cc}
 .logged_out{color:#2e7d32;font-size:.85rem;margin:.5rem 0}
 .hint{color:#888;font-size:.75rem;margin:0 0 .6rem 1.3rem;line-height:1.3}
 .sublabel{font-size:.8rem;color:#555;margin:.2rem 0 0}
+.logo{text-align:center;margin-bottom:.5rem}
+.logo img{width:96px;height:auto}
 </style></head>
 <body>
 <form method="post">
+<div class="logo"><img src="/assets/lodgemans-logo.png" alt="lodgeman-s"></div>
 <h1>统一认证</h1>
 <p class="desc">登录后访问所有已授权服务</p>
 ALERTS
