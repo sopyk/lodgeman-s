@@ -42,6 +42,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .badge-red{background:#fef2f2;color:#b91c1c}
 .badge-green{background:#f0fdf4;color:#166534}
 code{background:#f5f5f5;padding:.1rem .3rem;border-radius:4px;font-size:.8rem}
+.pwd-wrap{position:relative;display:flex;align-items:center}.pwd-wrap input{flex:1;padding-right:2rem}.pwd-toggle{position:absolute;right:2px;background:none;border:none;cursor:pointer;padding:0;line-height:1;user-select:none;display:flex;align-items:center;justify-content:center;width:28px;height:100%}.pwd-toggle svg{width:18px;height:18px;fill:none;stroke:#999;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}.pwd-toggle:hover svg{stroke:#666}
 table{width:100%;border-collapse:collapse}
 .sessions{table-layout:fixed}
 th{text-align:left;font-weight:600;padding:.55rem .4rem;border-bottom:2px solid #eee;font-size:.8rem;color:#555}
@@ -87,7 +88,7 @@ function tag(s, ...vals) {
 }
 
 function page(title, content) {
-  return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title} · 门房大爷</title><link rel="icon" href="/assets/favicon.png"><style>${CSS}</style></head><body><div class="page">${content}</div></body></html>`;
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title} · 门房大爷</title><link rel="icon" href="/assets/favicon.png"><style>${CSS}</style></head><body><svg style="display:none"><symbol id="eye" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></symbol><symbol id="eye-off" viewBox="0 0 24 24"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/><path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"/></symbol></svg><div class="page">${content}</div><script>function pwdtoggle(b){var i=b.previousElementSibling,e=b.querySelector('use');if(i.type==='password'){i.type='text';e.setAttribute('href','#eye-off')}else{i.type='password';e.setAttribute('href','#eye')}}</script></body></html>`;
 }
 
 function navBar() {
@@ -233,8 +234,8 @@ function renderLogin(req, res, config) {
 <p style="text-align:center;color:#888;font-size:.8rem;margin-bottom:1rem;font-style:italic">首次使用</p>
 <form method="post">
 <div class="form-group"><label>管理员用户名</label><input name="username" value="${esc(config.admin_username)}" autofocus></div>
-<div class="form-group"><label>密码（至少6个字符）</label><input type="password" name="password"></div>
-<div class="form-group"><label>确认密码</label><input type="password" name="confirm"></div>
+<div class="form-group"><label>密码（至少6个字符）</label><div class="pwd-wrap"><input type="password" name="password"><button type="button" class="pwd-toggle" onclick="pwdtoggle(this)" aria-label="切换密码显示"><svg><use href="#eye"/></svg></button></div></div>
+<div class="form-group"><label>确认密码</label><div class="pwd-wrap"><input type="password" name="confirm"><button type="button" class="pwd-toggle" onclick="pwdtoggle(this)" aria-label="切换密码显示"><svg><use href="#eye"/></svg></button></div></div>
 <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:.5rem">注册</button>
 <p style="margin-top:.8rem;font-size:.78rem;color:#999;text-align:center;line-height:1.5">当前未设置管理员密码，请立即设置管理员密码。可以修改用户名。</p>
 </form></div>`);
@@ -263,8 +264,8 @@ function renderLogin(req, res, config) {
 <div class="alert alert-error">${esc(err)}</div>
 <form method="post">
 <div class="form-group"><label>管理员用户名</label><input name="username" value="${esc(username)}" autofocus></div>
-<div class="form-group"><label>密码（至少6个字符）</label><input type="password" name="password"></div>
-<div class="form-group"><label>确认密码</label><input type="password" name="confirm"></div>
+<div class="form-group"><label>密码（至少6个字符）</label><div class="pwd-wrap"><input type="password" name="password"><button type="button" class="pwd-toggle" onclick="pwdtoggle(this)" aria-label="切换密码显示"><svg><use href="#eye"/></svg></button></div></div>
+<div class="form-group"><label>确认密码</label><div class="pwd-wrap"><input type="password" name="confirm"><button type="button" class="pwd-toggle" onclick="pwdtoggle(this)" aria-label="切换密码显示"><svg><use href="#eye"/></svg></button></div></div>
 <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:.5rem">注册</button>
 <p style="margin-top:.8rem;font-size:.78rem;color:#999;text-align:center;line-height:1.5">当前未设置管理员密码，请立即设置管理员密码。可以修改用户名。</p>
 </form></div>`);
@@ -301,7 +302,7 @@ function renderLogin(req, res, config) {
 <p style="text-align:center;color:#888;font-size:.8rem;margin-bottom:1rem;font-style:italic">"领导回来啦～"</p>
 <form method="post">
 <div class="form-group"><label>用户名</label><input name="username" autofocus></div>
-<div class="form-group"><label>密码</label><input type="password" name="password"></div>
+<div class="form-group"><label>密码</label><div class="pwd-wrap"><input type="password" name="password"><button type="button" class="pwd-toggle" onclick="pwdtoggle(this)" aria-label="切换密码显示"><svg><use href="#eye"/></svg></button></div></div>
 <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:.5rem">登录</button>
 </form></div>`);
   }
@@ -334,7 +335,7 @@ function renderLogin(req, res, config) {
 <div class="alert alert-error">用户名或密码错误</div>
 <form method="post">
 <div class="form-group"><label>用户名</label><input name="username" value="${esc(params.get('username') || '')}" autofocus></div>
-<div class="form-group"><label>密码</label><input type="password" name="password"></div>
+<div class="form-group"><label>密码</label><div class="pwd-wrap"><input type="password" name="password"><button type="button" class="pwd-toggle" onclick="pwdtoggle(this)" aria-label="切换密码显示"><svg><use href="#eye"/></svg></button></div></div>
 <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:.5rem">登录</button>
 </form></div>`);
     }
@@ -358,13 +359,13 @@ function renderDashboard(req, res, backend, editingIdx, editError, successMsg) {
 <form method="post" action="/_admin/routes/edit/${i}" style="display:flex;flex-wrap:wrap;gap:.5rem;padding:.6rem;background:#f8faff;align-items:end">
 <div style="display:flex;flex-direction:column;gap:.2rem;flex:1;min-width:130px">
 <label style="font-size:.7rem;color:#666">Host</label>
-<input name="host" value="${esc(r.host)}" required style="padding:.35rem .5rem;border:1px solid #d0d0d0;border-radius:4px;font-size:.82rem;width:100%">
+<input name="host" value="${esc(r.host)}" placeholder="svc.example.com" required style="padding:.35rem .5rem;border:1px solid #d0d0d0;border-radius:4px;font-size:.82rem;width:100%">
 </div>
 <div style="display:flex;flex-direction:column;gap:.2rem;flex:1;min-width:200px">
 <label style="font-size:.7rem;color:#666">目标 <span style="font-weight:400;color:#999">(仅支持 http)</span></label>
 <div class="taddr-wrap">
 <span class="target-scheme">http://</span>
-<input name="target" class="target-input" value="${esc(r.target.replace(/^https?:\/\//, ''))}" required>
+<input name="target" class="target-input" value="${esc(r.target.replace(/^https?:\/\//, ''))}" placeholder="地址:端口" required>
 </div>
 </div>
 <div style="display:flex;flex-direction:column;gap:.2rem;flex:0 0 90px">
@@ -376,11 +377,11 @@ function renderDashboard(req, res, backend, editingIdx, editError, successMsg) {
 </div>
 <div style="display:flex;flex-direction:column;gap:.2rem;flex:1;min-width:100px">
 <label style="font-size:.7rem;color:#666">描述</label>
-<input name="description" value="${esc(r.description || '')}" style="padding:.35rem .5rem;border:1px solid #d0d0d0;border-radius:4px;font-size:.82rem;width:100%">
+<input name="description" value="${esc(r.description || '')}" placeholder="My Service" style="padding:.35rem .5rem;border:1px solid #d0d0d0;border-radius:4px;font-size:.82rem;width:100%">
 </div>
 <div style="display:flex;flex-direction:column;gap:.2rem;flex:1;min-width:100px">
 <label style="font-size:.7rem;color:#666">豁免路径</label>
-<input name="auth_exempt" value="${esc((r.auth_exempt || []).join(','))}" style="padding:.35rem .5rem;border:1px solid #d0d0d0;border-radius:4px;font-size:.82rem;width:100%">
+<input name="auth_exempt" value="${esc((r.auth_exempt || []).join(','))}" placeholder="/api/*,/health" style="padding:.35rem .5rem;border:1px solid #d0d0d0;border-radius:4px;font-size:.82rem;width:100%">
 </div>
 <div style="display:flex;gap:.3rem;align-items:end;padding-bottom:.15rem">
 <button class="btn btn-sm btn-primary">保存</button>
@@ -722,18 +723,18 @@ ${alert ? `<div class="alert alert-${alert.type}">${esc(alert.text)}</div>` : ''
 <div class="card">
 <h2>修改访问密码</h2>
 <form method="post" action="/_admin/settings/password">
-<div class="form-group"><label>新访问密码</label><input type="password" name="password" required></div>
-<div class="form-group"><label>确认新密码</label><input type="password" name="confirm" required></div>
+<div class="form-group"><label>新访问密码</label><div class="pwd-wrap"><input type="password" name="password" required><button type="button" class="pwd-toggle" onclick="pwdtoggle(this)" aria-label="切换密码显示"><svg><use href="#eye"/></svg></button></div></div>
+<div class="form-group"><label>确认新密码</label><div class="pwd-wrap"><input type="password" name="confirm" required><button type="button" class="pwd-toggle" onclick="pwdtoggle(this)" aria-label="切换密码显示"><svg><use href="#eye"/></svg></button></div></div>
 <button class="btn btn-primary">保存</button>
 </form>
 </div>
 <div class="card">
 <h2>修改管理员账号</h2>
 <form method="post" action="/_admin/settings/admin">
-<div class="form-group"><label>当前管理员密码</label><input type="password" name="current" required></div>
+<div class="form-group"><label>当前管理员密码</label><div class="pwd-wrap"><input type="password" name="current" required><button type="button" class="pwd-toggle" onclick="pwdtoggle(this)" aria-label="切换密码显示"><svg><use href="#eye"/></svg></button></div></div>
 <div class="form-group"><label>新用户名</label><input name="username" value="${esc(config.admin_username)}" required></div>
-<div class="form-group"><label>新密码</label><input type="password" name="password" placeholder="留空则不修改"></div>
-<div class="form-group"><label>确认新密码</label><input type="password" name="confirm" placeholder="留空则不修改"></div>
+<div class="form-group"><label>新密码</label><div class="pwd-wrap"><input type="password" name="password" placeholder="留空则不修改"><button type="button" class="pwd-toggle" onclick="pwdtoggle(this)" aria-label="切换密码显示"><svg><use href="#eye"/></svg></button></div></div>
+<div class="form-group"><label>确认新密码</label><div class="pwd-wrap"><input type="password" name="confirm" placeholder="留空则不修改"><button type="button" class="pwd-toggle" onclick="pwdtoggle(this)" aria-label="切换密码显示"><svg><use href="#eye"/></svg></button></div></div>
 <button class="btn btn-primary">保存</button>
 </form>
 </div>
