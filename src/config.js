@@ -11,6 +11,7 @@ const DEFAULTS = {
   admin_password: '',
   session_max_age: 2592000,
   routes: [],
+  timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
 };
 
 const HASH_PREFIX = 'scrypt:';
@@ -49,6 +50,7 @@ function loadConfig() {
       admin_password: raw.admin_password ?? DEFAULTS.admin_password,
       session_max_age: raw.session_max_age || DEFAULTS.session_max_age,
       routes: Array.isArray(raw.routes) ? raw.routes.map(normalizeRoute) : [],
+      timezone: raw.timezone || DEFAULTS.timezone,
     };
   } catch (err) {
     console.error('Config load failed, using defaults:', err.message);
@@ -112,6 +114,7 @@ function saveConfig(config) {
       admin_username: config.admin_username,
       admin_password: config.admin_password,
       session_max_age: config.session_max_age,
+      timezone: config.timezone,
       routes: config.routes.map(r => ({
         host: r.host,
         target: r.target,

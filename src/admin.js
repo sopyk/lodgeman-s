@@ -204,6 +204,9 @@ async function handleAdmin(req, res, backend) {
     if (pathname === '/_admin/settings/admin') {
       return changeAdmin(req, res, backend);
     }
+    if (pathname === '/_admin/settings/timezone') {
+      return changeTimezone(req, res, backend);
+    }
     if (pathname === '/_admin/routes/export') {
       return exportRoutes(req, res, backend);
     }
@@ -407,8 +410,8 @@ ${er ? `<div style="padding:.3rem .6rem .5rem;background:#fef2f2;font-size:.78re
 <td>${s.host || ''}</td>
 <td title="${esc(s.userAgent || '')}">${esc((s.userAgent || '').slice(0, 30))}</td>
 <td>${s.ip || ''}</td>
-<td style="font-size:.78rem;color:#666;white-space:nowrap">${new Date(s.createdAt).toLocaleString('zh-CN', {timeZone:'Asia/Shanghai'})}</td>
-<td style="font-size:.78rem;color:#666;white-space:nowrap">${new Date(s.expiresAt).toLocaleString('zh-CN', {timeZone:'Asia/Shanghai'})}</td>
+<td style="font-size:.78rem;color:#666;white-space:nowrap">${new Date(s.createdAt).toLocaleString('zh-CN', {timeZone:config.timezone||'UTC'})}</td>
+<td style="font-size:.78rem;color:#666;white-space:nowrap">${new Date(s.expiresAt).toLocaleString('zh-CN', {timeZone:config.timezone||'UTC'})}</td>
 <td>${s._type === 'admin' ? '<span style="color:#999;font-size:.75rem">—</span>' : `<form method="post" action="/_admin/kick" style="display:inline"><input type="hidden" name="sid" value="${s.id}"><button class="btn btn-sm btn-outline">踢下线</button></form>`}</td>
 </tr>`).join('');
 
@@ -714,9 +717,21 @@ async function updateSessionLabel(req, res, backend) {
 
 // ── Settings ──
 
+const TIMEZONES = [
+  'UTC', 'Asia/Shanghai', 'Asia/Tokyo', 'Asia/Seoul',
+  'Asia/Singapore', 'Asia/Hong_Kong', 'Asia/Taipei',
+  'Asia/Kolkata', 'Asia/Dubai',
+  'Europe/London', 'Europe/Berlin', 'Europe/Paris',
+  'America/New_York', 'America/Chicago', 'America/Denver', 'America/Los_Angeles',
+  'Pacific/Auckland', 'Australia/Sydney',
+];
+
 function renderSettings(req, res, backend, alert) {
   if (req.method === 'POST' && !alert) return rd(res, '/_admin/settings');
   const { config } = backend;
+  const tzOpts = TIMEZONES.map(tz =>
+    `<option value="${tz}"${config.timezone === tz ? ' selected' : ''}>${tz}</option>`
+  ).join('');
   h(res, 200, '设置', `${navBar()}
 ${alert ? `<div class="alert alert-${alert.type}">${esc(alert.text)}</div>` : ''}
 <div class="settings-grid">
@@ -735,6 +750,13 @@ ${alert ? `<div class="alert alert-${alert.type}">${esc(alert.text)}</div>` : ''
 <div class="form-group"><label>新用户名</label><input name="username" value="${esc(config.admin_username)}" required></div>
 <div class="form-group"><label>新密码</label><div class="pwd-wrap"><input type="password" name="password" placeholder="留空则不修改"><button type="button" class="pwd-toggle" onclick="pwdtoggle(this)" aria-label="切换密码显示"><svg><use href="#eye"/></svg></button></div></div>
 <div class="form-group"><label>确认新密码</label><div class="pwd-wrap"><input type="password" name="confirm" placeholder="留空则不修改"><button type="button" class="pwd-toggle" onclick="pwdtoggle(this)" aria-label="切换密码显示"><svg><use href="#eye"/></svg></button></div></div>
+<button class="btn btn-primary">保存</button>
+</form>
+</div>
+<div class="card">
+<h2>时区设置</h2>
+<form method="post" action="/_admin/settings/timezone">
+<div class="form-group"><label>显示时间时区</label><select name="timezone" style="padding:.45rem .6rem;border:1px solid #d0d0d0;border-radius:6px;font-size:.85rem;width:100%">${tzOpts}</select></div>
 <button class="btn btn-primary">保存</button>
 </form>
 </div>
@@ -783,6 +805,20 @@ async function changeAdmin(req, res, backend) {
   require('./config.js').saveConfig(config);
   audit('ADMIN_ACCOUNT_CHANGE', 'username=' + username, ip);
   renderSettings(req, res, backend, { type: 'success', text: '管理员账号已更新' });
+}
+
+async function changeTimezone(req, res, backend) {
+  const body = await readBody(req);
+  const params = new URLSearchParams(body);
+  const { config } = backend;
+  const tz = params.get('timezone') || 'UTC';
+  if (!TIMEZONES.includes(tz)) {
+    return renderSettings(req, res, backend, { type: 'error', text: '无效的时区' });
+  }
+  config.timezone = tz;
+  require('./config.js').saveConfig(config);
+  audit('TIMEZONE_CHANGE', tz, req.socket.remoteAddress || '');
+  renderSettings(req, res, backend, { type: 'success', text: `时区已设为 ${tz}` });
 }
 
 function reloadConfig(req, res, backend) {
