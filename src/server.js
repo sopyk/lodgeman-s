@@ -69,6 +69,11 @@ const server = http.createServer((req, res) => {
 
   const route = matchRoute(config, host);
   if (!route) {
+    if (!config.admin_password) {
+      res.writeHead(302, { 'Location': '/_admin/login' });
+      res.end();
+      return;
+    }
     res.writeHead(404, { 'Content-Type': 'text/plain' });
     res.end('Not Found');
     return;
