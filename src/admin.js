@@ -407,8 +407,8 @@ ${er ? `<div style="padding:.3rem .6rem .5rem;background:#fef2f2;font-size:.78re
 <td>${s.host || ''}</td>
 <td title="${esc(s.userAgent || '')}">${esc((s.userAgent || '').slice(0, 30))}</td>
 <td>${s.ip || ''}</td>
-<td style="font-size:.78rem;color:#666;white-space:nowrap">${new Date(s.createdAt).toLocaleString('zh-CN')}</td>
-<td style="font-size:.78rem;color:#666;white-space:nowrap">${new Date(s.expiresAt).toLocaleString('zh-CN')}</td>
+<td style="font-size:.78rem;color:#666;white-space:nowrap">${new Date(s.createdAt).toLocaleString('zh-CN', {timeZone:'Asia/Shanghai'})}</td>
+<td style="font-size:.78rem;color:#666;white-space:nowrap">${new Date(s.expiresAt).toLocaleString('zh-CN', {timeZone:'Asia/Shanghai'})}</td>
 <td>${s._type === 'admin' ? '<span style="color:#999;font-size:.75rem">—</span>' : `<form method="post" action="/_admin/kick" style="display:inline"><input type="hidden" name="sid" value="${s.id}"><button class="btn btn-sm btn-outline">踢下线</button></form>`}</td>
 </tr>`).join('');
 
