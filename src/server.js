@@ -61,10 +61,8 @@ const server = http.createServer((req, res) => {
       res.writeHead(200, { 'Content-Type': mime[ext] || 'application/octet-stream', 'Cache-Control': 'max-age=86400' });
       res.end(data);
     } catch {
-      res.writeHead(404, { 'Content-Type': 'text/plain' });
-      res.end('Not Found');
+      // not a local asset, fall through to proxy
     }
-    return;
   }
 
   const route = matchRoute(config, host);
@@ -74,8 +72,11 @@ const server = http.createServer((req, res) => {
       res.end();
       return;
     }
-    res.writeHead(404, { 'Content-Type': 'text/plain' });
-    res.end('Not Found');
+    res.writeHead(404, { 'Content-Type': 'text/html; charset=utf-8' });
+    res.end(`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>404 · 门房大爷LodgeManS</title><link rel="icon" href="/assets/favicon.png">
+<style>body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f0f2f5;color:#1a1a2e;display:flex;justify-content:center;align-items:center;height:100vh;margin:0}.card{background:#fff;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,.08);padding:2.5rem 3rem;text-align:center}h1{font-size:4rem;margin:0;color:#d32f2f;font-weight:700;letter-spacing:-.02em}p.sub{color:#888;margin:.75rem 0 0;font-size:1rem}.brand{display:flex;align-items:center;justify-content:center;gap:8px;margin-top:1.5rem;padding-top:1rem;border-top:1px solid #eee}.brand img{width:20px;height:20px;border-radius:4px}.brand a{color:#555;text-decoration:none;font-size:.82rem;font-weight:500}.brand a:hover{color:#0066ff}</style></head>
+<body><div class="card"><h1>404</h1><p class="sub">Not Found 页面不存在</p><div class="brand"><img src="/assets/favicon.png" alt=""><a href="https://github.com/sopyk/lodgeman-s" target="_blank">门房大爷 LodgeManS ↗</a></div></div></body></html>`);
     return;
   }
 

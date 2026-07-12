@@ -9,7 +9,11 @@ function proxyRequest(req, res, route) {
     method: req.method,
     headers: { ...req.headers },
   };
-  delete options.headers['cookie'];
+  if (options.headers['cookie']) {
+    const cookies = options.headers['cookie'].split('; ').filter(c => !c.startsWith('auth_session='));
+    if (cookies.length) options.headers['cookie'] = cookies.join('; ');
+    else delete options.headers['cookie'];
+  }
 
   const proxyReq = http.request(options, proxyRes => {
     res.writeHead(proxyRes.statusCode, { ...proxyRes.headers });
@@ -36,7 +40,11 @@ function proxyUpgrade(req, socket, head, route) {
     method: 'GET',
     headers: { ...req.headers },
   };
-  delete options.headers['cookie'];
+  if (options.headers['cookie']) {
+    const cookies = options.headers['cookie'].split('; ').filter(c => !c.startsWith('auth_session='));
+    if (cookies.length) options.headers['cookie'] = cookies.join('; ');
+    else delete options.headers['cookie'];
+  }
 
   const proxyReq = http.request(options);
   proxyReq.on('upgrade', (proxyRes, proxySocket) => {

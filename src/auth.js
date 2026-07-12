@@ -38,7 +38,7 @@ label{display:flex;align-items:center;gap:.4rem;font-size:.85rem;color:#555;marg
 input[type=checkbox]{width:auto;margin:0}
 .check-row{display:flex;gap:.6rem;margin-bottom:0}
 .check-row>div{flex:1;min-width:0}
-.check-row label{margin-bottom:0}
+.check-row label{width:fit-content;margin-bottom:0}
 button{width:100%;padding:.6rem;background:#0066ff;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:1rem}
 button:hover{background:#0052cc}
 .error{color:#d32f2f;font-size:.85rem;margin:.5rem 0}
@@ -47,6 +47,12 @@ button:hover{background:#0052cc}
 .sublabel{font-size:.8rem;color:#555;margin:.2rem 0 0}
 .banner{text-align:center;margin-bottom:1rem}
 .banner img{max-width:100%;height:auto;border-radius:6px}
+.pwd-wrap{position:relative;display:flex;align-items:center}
+.pwd-wrap input{flex:1;padding-right:2rem}
+.pwd-toggle{position:absolute;right:2px;top:1px;bottom:1px;background:none;border:none;cursor:pointer;padding:0;line-height:1;user-select:none;display:flex;align-items:center;justify-content:center;width:28px;height:auto}
+button.pwd-toggle:hover{background:none}
+.pwd-toggle svg{width:18px;height:18px;fill:none;stroke:#999;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+.pwd-toggle:hover svg{stroke:#666}
 </style></head>
 <body>
 <form method="post">
@@ -55,10 +61,11 @@ button:hover{background:#0052cc}
 <p class="desc">统一认证网关</p>
 <p class="desc" style="font-style:italic">"先来登个记～"</p>
 ALERTS
-<input type="password" name="password" placeholder="密码" autofocus>
+<div class="pwd-wrap"><input type="password" name="password" placeholder="密码" autofocus><button type="button" class="pwd-toggle" onclick="var i=this.previousElementSibling,e=this.querySelector('use');if(i.type==='password'){i.type='text';e.setAttribute('href','#eye-off')}else{i.type='password';e.setAttribute('href','#eye')}" aria-label="切换密码显示"><svg><use href="#eye"/></svg></button></div>
+<svg style="display:none"><symbol id="eye" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></symbol><symbol id="eye-off" viewBox="0 0 24 24"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/><path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"/></symbol></svg>
 <div class="check-row">
-<div><label><input type="checkbox" name="remember" value="1" checked onchange="document.getElementById('hint').style.display=this.checked?'block':'none'"> 保持登录</label></div>
-<div><label>时长 <select name="duration" style="width:auto;display:inline-block;padding:.3rem .4rem;font-size:.85rem;margin:0">${OPTS}</select></label></div>
+<div><label><input type="checkbox" name="remember" value="1" checked> 保持登录</label></div>
+<div><span style="font-size:.85rem;color:#555">时长 </span><select name="duration" style="width:auto;display:inline-block;padding:.3rem .4rem;font-size:.85rem;margin:0">${OPTS}</select></div>
 </div>
 <div id="hint" class="hint">建议仅在私人设备上勾选。公共设备请勿勾选。</div>
 <div style="margin:.5rem 0 .75rem">
