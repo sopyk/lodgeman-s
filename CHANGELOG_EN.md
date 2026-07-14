@@ -2,6 +2,17 @@
 
 # Changelog
 
+## 1.0.2 (2026-07-14)
+
+### Fixes
+
+- **Asset crash**: Missing `return` after sending static file response, causing `ERR_HTTP_HEADERS_SENT` crash when auth logic tries to write headers again
+- **Default timezone**: Timezone defaults to `Asia/Shanghai` so session timestamps display correctly out of the box
+
+### Improvements
+
+- **Configurable timezone**: Added timezone selection in Admin → Settings, affecting session timestamps and audit log display
+
 ## 1.0.0 (2026-07-12)
 
 LodgeManS — Unified Auth Gateway. One login to secure multiple backend services.
