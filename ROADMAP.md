@@ -30,6 +30,14 @@
   - 方案: 在密码框旁增加眼睛图标/「显示」按钮，点击在 `password` 与 `text` 之间
      切换 `input.type`，便于核对输入。
 
+- [ ] `/assets/` 静态文件响应后未 return，导致后续 auth 逻辑二次写 headers 崩溃
+  - 类型: bug
+  - 发现于: v1.0.1
+  - 描述: 浏览器请求 `/assets/` 下静态资源时，`fs.readFileSync` 成功发送 200 响应后没有
+    `return`，执行继续落到 auth 重定向逻辑，再次 `res.writeHead` 触发
+    `ERR_HTTP_HEADERS_SENT`，服务 crash 重启，页面白屏。
+  - 修复方案: `server.js:62` 的 `res.end(data)` 后加一行 `return;`
+
 ---
 
 ## 已修复 Bug (Fixed)

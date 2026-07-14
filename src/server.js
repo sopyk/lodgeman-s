@@ -60,6 +60,7 @@ const server = http.createServer((req, res) => {
       const data = fs.readFileSync(filePath);
       res.writeHead(200, { 'Content-Type': mime[ext] || 'application/octet-stream', 'Cache-Control': 'max-age=86400' });
       res.end(data);
+      return;
     } catch {
       // not a local asset, fall through to proxy
     }
@@ -112,6 +113,10 @@ server.on('upgrade', (req, socket, head) => {
   }
 
   proxyUpgrade(req, socket, head, route);
+});
+
+process.on('uncaughtException', err => {
+  console.error('Uncaught exception:', err.message);
 });
 
 const PORT = config.port;
