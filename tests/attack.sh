@@ -65,7 +65,7 @@ check_contains() {
 }
 
 get_user_cookie() {
-  curl -s -X POST -d "password=$PASS&duration=$1" -D - "$TARGET/_login" 2>/dev/null | grep -o 'auth_session=[^;]*' | head -1 || true
+  curl -s -X POST -d "access_pwd=$PASS&duration=$1" -D - "$TARGET/_login" 2>/dev/null | grep -o 'auth_session=[^;]*' | head -1 || true
 }
 
 get_admin_cookie() {
@@ -154,10 +154,10 @@ echo ""
 echo "── 4. Body 过大 (#5) ──"
 
 check_status "#5a 1MB+ → 413" "413" \
-  "$(python3 -c "import sys; sys.stdout.buffer.write(b'password=$PASS&x=' + b'a'*1048576)" | curl -s -X POST --data-binary @- -o /dev/null -w "%{http_code}" "$TARGET/_login" 2>/dev/null)"
+  "$(python3 -c "import sys; sys.stdout.buffer.write(b'access_pwd=$PASS&x=' + b'a'*1048576)" | curl -s -X POST --data-binary @- -o /dev/null -w "%{http_code}" "$TARGET/_login" 2>/dev/null)"
 
 # 略低于 1MB 应正常
-NEARLY_1MB_CODE=$(python3 -c "import sys; sys.stdout.buffer.write(b'password=$PASS&x=' + b'a'*(1048576 - 100))" | curl -s -X POST --data-binary @- -o /dev/null -w "%{http_code}" "$TARGET/_login" 2>/dev/null || echo "000")
+NEARLY_1MB_CODE=$(python3 -c "import sys; sys.stdout.buffer.write(b'access_pwd=$PASS&x=' + b'a'*(1048576 - 100))" | curl -s -X POST --data-binary @- -o /dev/null -w "%{http_code}" "$TARGET/_login" 2>/dev/null || echo "000")
 check_contains "#5b ~1MB 正常登录" "302" "$NEARLY_1MB_CODE"
 
 # ──────────────────────────────────────────
@@ -168,7 +168,7 @@ echo "── 5. 日志注入 (#12) ──"
 
 LABEL_INJECT=$(python3 -c "import urllib.parse; print(urllib.parse.quote('foo\nFAKE_INJECT'))" 2>/dev/null)
 get_user_cookie "3600" &>/dev/null  # ignore, just do the login
-curl -s -X POST -d "password=$PASS&duration=3600&label=$LABEL_INJECT" "$TARGET/_login" >/dev/null 2>&1 || true
+  curl -s -X POST -d "access_pwd=$PASS&duration=3600&label=$LABEL_INJECT" "$TARGET/_login" >/dev/null 2>&1 || true
 FAKE=$(docker exec "$CONTAINER" sh -c 'cat /app/data/audit.log' 2>/dev/null | grep -c 'FAKE_INJECT' || true)
 check_status "#12 日志注入 (FAKE_INJECT=0)" "0" "$FAKE"
 

@@ -41,10 +41,10 @@ echo " Target: $TARGET"
 echo "═══════════════════════════════════════"
 
 # 预取 cookie
-COOKIE=$(curl -s -X POST -d "password=$PASS&duration=3600" -D - "$TARGET/_login" 2>/dev/null | grep -o 'auth_session=[^;]*' | head -1)
+COOKIE=$(curl -s -X POST -d "access_pwd=$PASS&duration=3600" -D - "$TARGET/_login" 2>/dev/null | grep -o 'auth_session=[^;]*' | head -1)
 ADMIN_COOKIE=$(curl -s -X POST -d "username=admin&password=admin123" -D - "$TARGET/_admin/login" 2>/dev/null | grep -o 'admin_session=[^;]*' | head -1)
 
-run_concurrent "登录" "302" -X POST -d "password=$PASS&duration=3600" "$TARGET/_login"
+run_concurrent "登录" "302" -X POST -d "access_pwd=$PASS&duration=3600" "$TARGET/_login"
 run_concurrent "管理页" "200" --cookie "$ADMIN_COOKIE" "$TARGET/_admin"
 run_concurrent "静态资源" "200" "$TARGET/assets/favicon.png"
 run_concurrent "静态+管理混合" "200" --cookie "$ADMIN_COOKIE" "$TARGET/_admin"
