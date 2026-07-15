@@ -15,10 +15,11 @@ ADMIN_PASS="${ADMIN_PASS:-admin123}"
 PASSED=0; FAILED=0; TOTAL=0
 
 setup() {
-  # 备份原配置
-  docker exec "$CONTAINER" sh -c "cp /app/config/routes.yaml /app/config/routes.yaml.bak 2>/dev/null; echo ok" 2>/dev/null || true
+  # 备份原配置到宿主机临时文件（容器内 bind mount 会直接写入宿主机路径）
+  local bak="$(dirname "$0")/.routes.yaml.bak"
+  docker cp "$CONTAINER:/app/config/routes.yaml" "$bak" 2>/dev/null || true
   # 容器内设测试配置
-  docker exec "$CONTAINER" sh -c "cat > /app/config/routes.yaml << 'YAML'"
+  docker exec "$CONTAINER" sh -c "cat > /app/config/routes.yaml << 'YAML'
 port: 4082
 password: testpass
 admin_username: admin
@@ -40,7 +41,11 @@ YAML" 2>/dev/null || true
 }
 
 cleanup() {
-  docker exec "$CONTAINER" sh -c "cp /app/config/routes.yaml.bak /app/config/routes.yaml 2>/dev/null; rm -f /app/config/routes.yaml.bak" 2>/dev/null || true
+  local bak="$(dirname "$0")/.routes.yaml.bak"
+  if [ -f "$bak" ]; then
+    docker cp "$bak" "$CONTAINER:/app/config/routes.yaml" 2>/dev/null || true
+    rm -f "$bak"
+  fi
   docker restart "$CONTAINER" >/dev/null 2>&1
 }
 
