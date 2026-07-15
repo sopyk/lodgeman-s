@@ -1,11 +1,13 @@
 #!/bin/bash
 # LodgeManS 安全攻击模拟 & 功能测试
-# 用法: TARGET=http://host:port ./tests/attack.sh
-# 默认: TARGET=http://localhost:4082
+# 用法: TARGET=http://host:port CONTAINER=容器名 ./tests/attack.sh
+# 默认目标: dev 容器 (lodgeman-s-dev:4081)，避免误伤生产
+# 生产容器: TARGET=http://localhost:4082 CONTAINER=lodgeman-s
 
 set -eo pipefail
 
-TARGET="${TARGET:-http://localhost:4082}"
+TARGET="${TARGET:-http://localhost:4081}"
+CONTAINER="${CONTAINER:-lodgeman-s-dev}"
 PASS="${PASS:-testpass}"
 ADMIN_USER="${ADMIN_USER:-admin}"
 ADMIN_PASS="${ADMIN_PASS:-admin123}"
@@ -13,8 +15,10 @@ ADMIN_PASS="${ADMIN_PASS:-admin123}"
 PASSED=0; FAILED=0; TOTAL=0
 
 setup() {
+  # 备份原配置
+  docker exec "$CONTAINER" sh -c "cp /app/config/routes.yaml /app/config/routes.yaml.bak 2>/dev/null; echo ok" 2>/dev/null || true
   # 容器内设测试配置
-  docker exec lodgeman-s sh -c "cat > /app/config/routes.yaml << 'YAML'
+  docker exec "$CONTAINER" sh -c "cat > /app/config/routes.yaml << 'YAML'"
 port: 4082
 password: testpass
 admin_username: admin
@@ -31,13 +35,13 @@ routes:
     auth: false
     description: NoAuth
 YAML" 2>/dev/null || true
-  docker restart lodgeman-s >/dev/null 2>&1
+  docker restart "$CONTAINER" >/dev/null 2>&1
   sleep 3
 }
 
 cleanup() {
-  docker exec lodgeman-s sh -c "cp /app/config/routes.yaml.bak /app/config/routes.yaml 2>/dev/null; rm -f /app/config/routes.yaml.bak" 2>/dev/null || true
-  docker restart lodgeman-s >/dev/null 2>&1
+  docker exec "$CONTAINER" sh -c "cp /app/config/routes.yaml.bak /app/config/routes.yaml 2>/dev/null; rm -f /app/config/routes.yaml.bak" 2>/dev/null || true
+  docker restart "$CONTAINER" >/dev/null 2>&1
 }
 
 ok()   { PASSED=$((PASSED+1)); echo "  ✅ $1"; }
@@ -64,7 +68,7 @@ get_admin_cookie() {
 }
 
 get_sessions_json() {
-  docker exec lodgeman-s sh -c 'cat /app/data/sessions.json' 2>/dev/null || echo "[]"
+  docker exec "$CONTAINER" sh -c 'cat /app/data/sessions.json' 2>/dev/null || echo "[]"
 }
 
 echo ""
@@ -160,7 +164,7 @@ echo "── 5. 日志注入 (#12) ──"
 LABEL_INJECT=$(python3 -c "import urllib.parse; print(urllib.parse.quote('foo\nFAKE_INJECT'))" 2>/dev/null)
 get_user_cookie "3600" &>/dev/null  # ignore, just do the login
 curl -s -X POST -d "password=$PASS&duration=3600&label=$LABEL_INJECT" "$TARGET/_login" >/dev/null 2>&1 || true
-FAKE=$(docker exec lodgeman-s sh -c 'cat /app/data/audit.log' 2>/dev/null | grep -c 'FAKE_INJECT' || true)
+FAKE=$(docker exec "$CONTAINER" sh -c 'cat /app/data/audit.log' 2>/dev/null | grep -c 'FAKE_INJECT' || true)
 check_status "#12 日志注入 (FAKE_INJECT=0)" "0" "$FAKE"
 
 # ──────────────────────────────────────────
@@ -172,7 +176,7 @@ echo "── 6. Session 持久化 (#1) ──"
 BEFORE=$(get_sessions_json | python3 -c "import sys,json; print(len(json.load(sys.stdin)))" 2>/dev/null || echo "0")
 COOKIE_PERSIST=$(get_user_cookie "3600")
 
-docker restart lodgeman-s >/dev/null 2>&1
+docker restart "$CONTAINER" >/dev/null 2>&1
 sleep 3
 
 AFTER=$(get_sessions_json | python3 -c "import sys,json; print(len(json.load(sys.stdin)))" 2>/dev/null || echo "0")
