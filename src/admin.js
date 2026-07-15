@@ -253,8 +253,8 @@ function renderLogin(req, res, config) {
 <p style="text-align:center;color:#888;font-size:.8rem;margin-bottom:1rem;font-style:italic">首次使用</p>
 <form method="post">
 <div class="form-group"><label>管理员用户名</label><input name="username" value="${esc(config.admin_username)}" autofocus></div>
-<div class="form-group"><label>密码（至少6个字符）</label><div class="pwd-wrap"><input type="password" name="password"><button type="button" class="pwd-toggle" onclick="pwdtoggle(this)" aria-label="切换密码显示"><svg><use href="#eye"/></svg></button></div></div>
-<div class="form-group"><label>确认密码</label><div class="pwd-wrap"><input type="password" name="confirm"><button type="button" class="pwd-toggle" onclick="pwdtoggle(this)" aria-label="切换密码显示"><svg><use href="#eye"/></svg></button></div></div>
+<div class="form-group"><label>密码（至少6个字符）</label><div class="pwd-wrap"><input type="password" name="password" autocomplete="new-password"><button type="button" class="pwd-toggle" onclick="pwdtoggle(this)" aria-label="切换密码显示"><svg><use href="#eye"/></svg></button></div></div>
+<div class="form-group"><label>确认密码</label><div class="pwd-wrap"><input type="password" name="confirm" autocomplete="new-password"><button type="button" class="pwd-toggle" onclick="pwdtoggle(this)" aria-label="切换密码显示"><svg><use href="#eye"/></svg></button></div></div>
 <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:.5rem">注册</button>
 <p style="margin-top:.8rem;font-size:.78rem;color:#999;text-align:center;line-height:1.5">当前未设置管理员密码，请立即设置管理员密码。可以修改用户名。</p>
 </form></div>`);
@@ -285,8 +285,8 @@ function renderLogin(req, res, config) {
 <div class="alert alert-error">${esc(err)}</div>
 <form method="post">
 <div class="form-group"><label>管理员用户名</label><input name="username" value="${esc(username)}" autofocus></div>
-<div class="form-group"><label>密码（至少6个字符）</label><div class="pwd-wrap"><input type="password" name="password"><button type="button" class="pwd-toggle" onclick="pwdtoggle(this)" aria-label="切换密码显示"><svg><use href="#eye"/></svg></button></div></div>
-<div class="form-group"><label>确认密码</label><div class="pwd-wrap"><input type="password" name="confirm"><button type="button" class="pwd-toggle" onclick="pwdtoggle(this)" aria-label="切换密码显示"><svg><use href="#eye"/></svg></button></div></div>
+<div class="form-group"><label>密码（至少6个字符）</label><div class="pwd-wrap"><input type="password" name="password" autocomplete="new-password"><button type="button" class="pwd-toggle" onclick="pwdtoggle(this)" aria-label="切换密码显示"><svg><use href="#eye"/></svg></button></div></div>
+<div class="form-group"><label>确认密码</label><div class="pwd-wrap"><input type="password" name="confirm" autocomplete="new-password"><button type="button" class="pwd-toggle" onclick="pwdtoggle(this)" aria-label="切换密码显示"><svg><use href="#eye"/></svg></button></div></div>
 <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:.5rem">注册</button>
 <p style="margin-top:.8rem;font-size:.78rem;color:#999;text-align:center;line-height:1.5">当前未设置管理员密码，请立即设置管理员密码。可以修改用户名。</p>
 </form></div>`);
@@ -323,7 +323,7 @@ function renderLogin(req, res, config) {
 <p style="text-align:center;color:#888;font-size:.8rem;margin-bottom:1rem;font-style:italic">"领导回来啦～"</p>
 <form method="post">
 <div class="form-group"><label>用户名</label><input name="username" autofocus></div>
-<div class="form-group"><label>密码</label><div class="pwd-wrap"><input type="password" name="password"><button type="button" class="pwd-toggle" onclick="pwdtoggle(this)" aria-label="切换密码显示"><svg><use href="#eye"/></svg></button></div></div>
+<div class="form-group"><label>密码</label><div class="pwd-wrap"><input type="password" name="password" autocomplete="current-password"><button type="button" class="pwd-toggle" onclick="pwdtoggle(this)" aria-label="切换密码显示"><svg><use href="#eye"/></svg></button></div></div>
 <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:.5rem">登录</button>
 </form></div>`);
   }
@@ -358,7 +358,7 @@ function renderLogin(req, res, config) {
 <div class="alert alert-error">用户名或密码错误</div>
 <form method="post">
 <div class="form-group"><label>用户名</label><input name="username" value="${esc(params.get('username') || '')}" autofocus></div>
-<div class="form-group"><label>密码</label><div class="pwd-wrap"><input type="password" name="password"><button type="button" class="pwd-toggle" onclick="pwdtoggle(this)" aria-label="切换密码显示"><svg><use href="#eye"/></svg></button></div></div>
+<div class="form-group"><label>密码</label><div class="pwd-wrap"><input type="password" name="password" autocomplete="current-password"><button type="button" class="pwd-toggle" onclick="pwdtoggle(this)" aria-label="切换密码显示"><svg><use href="#eye"/></svg></button></div></div>
 <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:.5rem">登录</button>
 </form></div>`);
     }
@@ -764,18 +764,18 @@ ${alert ? `<div class="alert alert-${alert.type}">${esc(alert.text)}</div>` : ''
 <div class="card">
 <h2>修改访问密码</h2>
 <form method="post" action="/_admin/settings/password">
-<div class="form-group"><label>新访问密码</label><div class="pwd-wrap"><input type="password" name="password" required><button type="button" class="pwd-toggle" onclick="pwdtoggle(this)" aria-label="切换密码显示"><svg><use href="#eye"/></svg></button></div></div>
-<div class="form-group"><label>确认新密码</label><div class="pwd-wrap"><input type="password" name="confirm" required><button type="button" class="pwd-toggle" onclick="pwdtoggle(this)" aria-label="切换密码显示"><svg><use href="#eye"/></svg></button></div></div>
+<div class="form-group"><label>新访问密码</label><div class="pwd-wrap"><input type="password" name="password" autocomplete="new-password" required><button type="button" class="pwd-toggle" onclick="pwdtoggle(this)" aria-label="切换密码显示"><svg><use href="#eye"/></svg></button></div></div>
+<div class="form-group"><label>确认新密码</label><div class="pwd-wrap"><input type="password" name="confirm" autocomplete="new-password" required><button type="button" class="pwd-toggle" onclick="pwdtoggle(this)" aria-label="切换密码显示"><svg><use href="#eye"/></svg></button></div></div>
 <button class="btn btn-primary">保存</button>
 </form>
 </div>
 <div class="card">
 <h2>修改管理员账号</h2>
 <form method="post" action="/_admin/settings/admin">
-<div class="form-group"><label>当前管理员密码</label><div class="pwd-wrap"><input type="password" name="current" required><button type="button" class="pwd-toggle" onclick="pwdtoggle(this)" aria-label="切换密码显示"><svg><use href="#eye"/></svg></button></div></div>
+<div class="form-group"><label>当前管理员密码</label><div class="pwd-wrap"><input type="password" name="current" autocomplete="current-password" required><button type="button" class="pwd-toggle" onclick="pwdtoggle(this)" aria-label="切换密码显示"><svg><use href="#eye"/></svg></button></div></div>
 <div class="form-group"><label>新用户名</label><input name="username" value="${esc(config.admin_username)}" required></div>
-<div class="form-group"><label>新密码</label><div class="pwd-wrap"><input type="password" name="password" placeholder="留空则不修改"><button type="button" class="pwd-toggle" onclick="pwdtoggle(this)" aria-label="切换密码显示"><svg><use href="#eye"/></svg></button></div></div>
-<div class="form-group"><label>确认新密码</label><div class="pwd-wrap"><input type="password" name="confirm" placeholder="留空则不修改"><button type="button" class="pwd-toggle" onclick="pwdtoggle(this)" aria-label="切换密码显示"><svg><use href="#eye"/></svg></button></div></div>
+<div class="form-group"><label>新密码</label><div class="pwd-wrap"><input type="password" name="password" autocomplete="new-password" placeholder="留空则不修改"><button type="button" class="pwd-toggle" onclick="pwdtoggle(this)" aria-label="切换密码显示"><svg><use href="#eye"/></svg></button></div></div>
+<div class="form-group"><label>确认新密码</label><div class="pwd-wrap"><input type="password" name="confirm" autocomplete="new-password" placeholder="留空则不修改"><button type="button" class="pwd-toggle" onclick="pwdtoggle(this)" aria-label="切换密码显示"><svg><use href="#eye"/></svg></button></div></div>
 <button class="btn btn-primary">保存</button>
 </form>
 </div>
