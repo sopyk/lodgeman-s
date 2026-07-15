@@ -6,6 +6,13 @@ const { audit } = require('./audit.js');
 const adminSessions = new Map();
 const COOKIE_NAME = 'admin_session';
 
+setInterval(() => {
+  const now = Date.now();
+  for (const [id, s] of adminSessions) {
+    if (s.expiresAt < now) adminSessions.delete(id);
+  }
+}, 3600000);
+
 const CSS = `*{box-sizing:border-box;margin:0}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f0f2f5;color:#1a1a2e}
 .page{max-width:1100px;margin:0 auto;padding:1rem}
@@ -128,11 +135,20 @@ function getAdminSession(req) {
   return s;
 }
 
+const MAX_BODY = 1048576;
+
 function readBody(req) {
-  return new Promise(resolve => {
+  return new Promise((resolve, reject) => {
     let body = '';
-    req.on('data', c => body += c);
+    req.on('data', c => {
+      body += c;
+      if (Buffer.byteLength(body) > MAX_BODY) {
+        req.destroy(new Error('Payload too large'));
+        reject(new Error('Payload too large'));
+      }
+    });
     req.on('end', () => resolve(body));
+    req.on('error', reject);
   });
 }
 
@@ -245,8 +261,10 @@ function renderLogin(req, res, config) {
     }
 
     let body = '';
-    req.on('data', c => body += c);
+    let size = 0;
+    req.on('data', c => { body += c; size += c.length; });
     req.on('end', () => {
+      if (size > MAX_BODY) { h(res, 413, '错误', '<div class="card"><div class="alert alert-error">请求体过大</div></div>'); return; }
       const params = new URLSearchParams(body);
       const username = (params.get('username') || '').trim();
       const password = params.get('password') || '';
@@ -311,8 +329,10 @@ function renderLogin(req, res, config) {
   }
 
   let body = '';
-  req.on('data', c => body += c);
+  let size = 0;
+  req.on('data', c => { body += c; size += c.length; });
   req.on('end', () => {
+    if (size > MAX_BODY) { h(res, 413, '错误', '<div class="card"><div class="alert alert-error">请求体过大</div></div>'); return; }
     const params = new URLSearchParams(body);
     const ok = params.get('username') === config.admin_username
             && verifyPassword(params.get('password') || '', config.admin_password);
@@ -590,6 +610,7 @@ async function editRoute(req, res, backend) {
 }
 
 function deleteRoute(req, res, backend) {
+  if (req.method !== 'POST') return rd(res, '/_admin');
   const idx = parseInt(req.url.split('/').pop(), 10);
   const { config } = backend;
   const ip = req.socket.remoteAddress || '';
@@ -673,6 +694,7 @@ async function importRoutes(req, res, backend) {
 // ── Session ops ──
 
 async function kickSession(req, res, backend) {
+  if (req.method !== 'POST') return rd(res, '/_admin');
   const body = await readBody(req);
   const params = new URLSearchParams(body);
   const { sessions } = backend;
@@ -691,6 +713,7 @@ async function kickSession(req, res, backend) {
 }
 
 function clearSessions(req, res, backend) {
+  if (req.method !== 'POST') return rd(res, '/_admin');
   const ip = req.socket.remoteAddress || '';
   const count = backend.sessions.size;
   backend.sessions.clear();
@@ -706,8 +729,9 @@ async function updateSessionLabel(req, res, backend) {
   const ip = req.socket.remoteAddress || '';
   for (const [id, s] of backend.sessions) {
     if (id.startsWith(sid.replace('...', ''))) {
-      s.label = label;
-      audit('SESSION_LABEL_UPDATE', `sid=${id.slice(0, 8)}... label=${label}`, ip);
+      s.label = label || '';
+      const safeLabel = (label || '').replace(/[\n\r]/g, '\\n');
+      audit('SESSION_LABEL_UPDATE', `sid=${id.slice(0, 8)}... label=${safeLabel}`, ip);
       break;
     }
   }
@@ -822,6 +846,7 @@ async function changeTimezone(req, res, backend) {
 }
 
 function reloadConfig(req, res, backend) {
+  if (req.method !== 'POST') return rd(res, '/_admin');
   const ip = req.socket.remoteAddress || '';
   try {
     const newConfig = require('./config.js').loadConfig();
