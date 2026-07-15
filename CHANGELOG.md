@@ -11,6 +11,7 @@
 - **Body 大小限制**：登录和管理端请求 body 上限 1MB，超限返回 413
 - **Host 请求头泄漏**：转发前清理 `host`/`connection` 请求头，防止 Host Header Injection
 - **审计日志注入**：写入日志前转义 Label 中的 `\n`/`\r`
+- **密码变更失效会话**：修改管理员密码后清除所有已有管理端会话，防止旧 cookie 仍可访问
 
 ### 修复
 
@@ -21,10 +22,13 @@
 - **adminSessions 内存泄漏**：每小时定时清理过期管理端 session
 - **配置加载降级**：失败时 `throw` 而非返回默认值，确保管理员感知错误
 - **Duration 参数校验**：非法值回退到默认 1 小时
+- **代理超时**：后端代理连接设 10 秒超时，超时返回 502
+- **SID 前缀匹配**：`kickSession`/`updateSessionLabel` 中 `sid` 匹配改用显式 `endsWith('...')` 判断
 
 ### 改进
 
 - **Docker 开发体验**：`compose.yaml` 增加 `src/` bind mount，修改代码无需重建镜像
+- **代码一致性**：`admin.js` 移除多余的内联 `require`，统一使用顶部导入的模块变量
 
 ## 1.0.2 (2026-07-14)
 

@@ -1,5 +1,7 @@
 const http = require('http');
 
+const TIMEOUT = 10000;
+
 function proxyRequest(req, res, route) {
   const url = new URL(route.target);
   const options = {
@@ -8,6 +10,7 @@ function proxyRequest(req, res, route) {
     path: req.url,
     method: req.method,
     headers: { ...req.headers },
+    timeout: TIMEOUT,
   };
   delete options.headers['host'];
   delete options.headers['connection'];
@@ -22,8 +25,10 @@ function proxyRequest(req, res, route) {
     proxyRes.pipe(res);
   });
 
+  proxyReq.on('timeout', () => {
+    proxyReq.destroy(new Error('Proxy timeout'));
+  });
   proxyReq.on('error', err => {
-    console.error(`Proxy error [${route.description}]: ${err.message}`);
     if (!res.headersSent) {
       res.writeHead(502, { 'Content-Type': 'text/plain' });
       res.end(`Bad Gateway: ${route.description || route.target}`);
@@ -41,6 +46,7 @@ function proxyUpgrade(req, socket, head, route) {
     path: req.url,
     method: 'GET',
     headers: { ...req.headers },
+    timeout: TIMEOUT,
   };
   delete options.headers['host'];
   delete options.headers['connection'];
@@ -60,7 +66,8 @@ function proxyUpgrade(req, socket, head, route) {
     socket.pipe(proxySocket);
     proxySocket.pipe(socket);
   });
-  proxyReq.on('error', () => socket.destroy());
+  proxyReq.on('timeout', () => proxyReq.destroy());
+  proxyReq.on('error', () => { try { socket.destroy(); } catch {} });
   proxyReq.end();
 }
 

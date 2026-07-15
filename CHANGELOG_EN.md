@@ -11,6 +11,7 @@
 - **Body size limit**: Request body capped at 1MB, returns 413 if exceeded
 - **Host header leak**: Strip `host`/`connection` headers before proxying to prevent Host Header Injection
 - **Log injection**: Escape `\n`/`\r` in Label field before writing audit logs
+- **Password change invalidates sessions**: Clear all admin sessions on password change, preventing old cookies from lingering
 
 ### Fixes
 
@@ -21,10 +22,13 @@
 - **adminSessions leak**: Periodic cleanup of expired admin sessions every hour
 - **Config load failure**: Throw on error instead of returning defaults, ensuring admin awareness
 - **Duration validation**: Invalid duration values fall back to default 1 hour
+- **Proxy timeout**: Backend proxy connections set to 10s timeout, returns 502 on timeout
+- **SID prefix matching**: `kickSession`/`updateSessionLabel` use explicit `endsWith('...')` check instead of fragile `.replace('...', '')`
 
 ### Improvements
 
 - **Docker dev experience**: `compose.yaml` adds `src/` bind mount, code changes apply without rebuild
+- **Code consistency**: Removed spurious inline `require()` calls in `admin.js`, unified with top-level imports
 
 ## 1.0.2 (2026-07-14)
 

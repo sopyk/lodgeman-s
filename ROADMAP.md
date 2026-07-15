@@ -123,6 +123,30 @@
   - 修复于: v1.0.3
   - 修复方案: 写入审计日志前对 `label.replace(/[\n\r]/g, '\\n')`
 
+- [x] 代理后端无超时: `proxy.js` 中 `http.request` 未设超时，后端挂死时请求会永远挂起
+  - 类型: bug
+  - 发现于: v1.0.2
+  - 修复于: v1.0.3
+  - 修复方案: `proxy.js` 设 `timeout: 10000`，超时触发 `destroy()` 返回 502 Bad Gateway
+
+- [x] 管理员密码变更未失效已有会话: `changeAdmin` 更新密码后 `adminSessions` 中旧会话仍有效
+  - 类型: bug (安全)
+  - 发现于: v1.0.2
+  - 修复于: v1.0.3
+  - 修复方案: 密码变更成功时调用 `adminSessions.clear()` 踢掉所有旧会话
+
+- [x] 会话 ID 前缀匹配不严谨: `kickSession`/`updateSessionLabel` 中 `sid.replace('...', '')` 无差别移除三段点，可能误匹配
+  - 类型: bug
+  - 发现于: v1.0.2
+  - 修复于: v1.0.3
+  - 修复方案: 改为显式判断 `sid.endsWith('...') ? sid.slice(0, -3) : sid`
+
+- [x] 内联 `require` 不一致: `admin.js` 多处使用 `require('./config.js').hashPassword()` 而非顶部已 import 的变量
+  - 类型: enhancement
+  - 发现于: v1.0.2
+  - 实现于: v1.0.3
+  - 修复方案: 顶部 import 补 `loadConfig`，替换全部 4 处内联 `require` 为变量引用
+
 ---
 
 ## 已实现功能 (Done)

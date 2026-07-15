@@ -1,0 +1,31 @@
+port: 4082
+password: scrypt:c945574d02a9c12966329698aed076b7:274e00df87a3e51254047e8122d529e92ebb752fc6fbae39ada122dca84a78b0
+admin_username: sopyk
+admin_password: scrypt:24fad5f5883677be2c35966fea26f4a1:45f325b12c311ed30c074c39949bd66572b2f6ec38f58a457504cc8243cb6e90
+session_max_age: 2592000
+timezone: Asia/Shanghai
+routes:
+  - host: port.9997664.xyz
+    target: http://host.docker.internal:7577
+    auth: true
+    description: DockPort
+  - host: code.9992025.xyz
+    target: http://host.docker.internal:3000
+    auth: true
+    auth_exempt:
+      - /api/*
+    description: OpenCode UI
+  - host: oc.9992025.xyz
+    target: http://host.docker.internal:4096
+    auth: false
+    auth_exempt:
+      - /api/*
+    description: OpenCode 自带 webui
+  - host: qp.9997664.xyz
+    target: http://100.64.31.219:8088
+    auth: true
+    description: qp.9997664.xyz
+  - host: sh.9997664.xyz
+    target: http://100.64.31.114:2222
+    auth: true
+    description: WebSSH
