@@ -29,7 +29,12 @@
 
 - **Docker 开发体验**：`compose.yaml` 增加 `src/` bind mount，修改代码无需重建镜像
 - **代码一致性**：`admin.js` 移除多余的内联 `require`，统一使用顶部导入的模块变量
-- **测试脚本安全加固**：`tests/attack.sh` 默认目标改为 dev 容器，`setup`/`cleanup` 改用 `docker cp` 可靠备份恢复配置，防止误伤生产环境
+
+## 1.0.4 (Unreleased)
+
+### 修复
+
+- **测试脚本误伤生产环境**：`tests/attack.sh` 默认目标改为 dev 容器，`setup`/`cleanup` 改用 `docker cp` 可靠备份恢复配置，防止误伤生产环境
 
 ## 1.0.2 (2026-07-14)
 

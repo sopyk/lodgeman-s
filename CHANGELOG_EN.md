@@ -29,7 +29,12 @@
 
 - **Docker dev experience**: `compose.yaml` adds `src/` bind mount, code changes apply without rebuild
 - **Code consistency**: Removed spurious inline `require()` calls in `admin.js`, unified with top-level imports
-- **Test script hardening**: `tests/attack.sh` defaults to dev container; `setup`/`cleanup` use `docker cp` for reliable config backup/restore, preventing accidental production damage
+
+## 1.0.4 (Unreleased)
+
+### Fixes
+
+- **Test script damaged production**: `tests/attack.sh` now defaults to dev container; `setup`/`cleanup` use `docker cp` for reliable config backup/restore, preventing accidental production damage
 
 ## 1.0.2 (2026-07-14)
 
