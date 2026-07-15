@@ -813,7 +813,7 @@ function renderSettings(req, res, backend, alert) {
 </div>
 </div>
 <script>
-async function submitSettingsForm(form){var e=document.getElementById('settings-alert');e.innerHTML='<div class="alert" style="color:#888;font-size:.8rem;padding:.5rem .75rem">提交中...</div>';try{var d={};for(var p of new FormData(form))d[p[0]]=p[1];var r=await fetch(form.action,{method:'POST',body:JSON.stringify(d),headers:{'Content-Type':'application/json','X-Requested-With':'XMLHttpRequest'}});var j=await r.json();e.innerHTML='<div class="alert alert-'+(j.ok?'success':'error')+'">'+j.text+'</div>'}catch(x){e.innerHTML='<div class="alert alert-error">网络错误</div>'}}
+async function submitSettingsForm(form){var e=document.getElementById('settings-alert');e.innerHTML='<div class="alert" style="color:#888;font-size:.8rem;padding:.5rem .75rem">提交中...</div>';try{var d={},pwds=[];for(var i=0;i<form.elements.length;i++){var el=form.elements[i];if(el.name)d[el.name]=el.value;if(el.type==='password')pwds.push(el)}pwds.forEach(function(p){p.type='text'});var r=await fetch(form.action,{method:'POST',body:JSON.stringify(d),headers:{'Content-Type':'application/json','X-Requested-With':'XMLHttpRequest'}});var j=await r.json();e.innerHTML='<div class="alert alert-'+(j.ok?'success':'error')+'">'+j.text+'</div>';pwds.forEach(function(p){p.type='password'})}catch(x){e.innerHTML='<div class="alert alert-error">网络错误</div>'}}
 </script>`);
 }
 

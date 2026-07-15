@@ -148,13 +148,53 @@
   - 修复方案: 顶部 import 补 `loadConfig`，替换全部 4 处内联 `require` 为变量引用
 
 - [x] `tests/attack.sh` 误伤生产环境: 默认目标为生产容器 `lodgeman-s:4082`，`setup` 直接覆写 routes.yaml
-    且 `cleanup` 备份恢复不可靠（`.bak` 写容器可写层，重启后不可达）
+     且 `cleanup` 备份恢复不可靠（`.bak` 写容器可写层，重启后不可达）
   - 类型: bug
   - 发现于: v1.0.3
   - 修复于: v1.0.4
   - 修复方案: 默认目标改为 `lodgeman-s-dev:4081`；`setup` 先用 `docker cp` 备份到宿主机，
     `cleanup` 从宿主机复制恢复，确保配置不丢失
 
+- [x] 浏览器密码填充混淆: 访问密码页和管理员登录页密码字段同名，浏览器无法区分
+  - 类型: bug
+  - 发现于: v1.0.3
+  - 修复于: v1.0.4
+  - 修复方案: `auth.js` 访问密码页 `<input name="password">` 改为 `name="access_pwd"`，后端
+    `params.get('access_pwd')` 同步更新；`tests/attack.sh` 和 `tests/stress.sh` 同步字段名
+
+- [x] Tab 键落在眼睛按钮: 密码框右侧的 `<button>` 在 Tab 键顺序中，Tab 无法跳转到下一输入框
+  - 类型: bug
+  - 发现于: v1.0.3
+  - 修复于: v1.0.4
+  - 修复方案: 所有 `.pwd-toggle` 按钮增加 `tabindex="-1"`，用户仍可点击切换密码显示
+
+- [x] 设置页表单 JSON 解析失败: `FormData` 编码为 `multipart/form-data`，后端 `URLSearchParams` 无法解析
+  - 类型: bug
+  - 发现于: v1.0.3
+  - 修复于: v1.0.4
+  - 修复方案: 前端 `submitSettingsForm` 改为收集字段后提交 `Content-Type: application/json`，后端
+    `changePassword`/`changeAdmin` 检测 XHR 请求时用 `JSON.parse` + `Object.entries` 构造 `URLSearchParams`
+
+- [x] addRoute 错误未显示在页面: 添加路由失败时重定向到 `/?error=...`，但页面仅在编辑模式渲染错误
+  - 类型: bug
+  - 发现于: v1.0.3
+  - 修复于: v1.0.4
+  - 修复方案: `renderDashboard` 增加 `editingIdx < 0` 时在页面顶部显示 `editError`
+
+- [x] 设置页保存触发浏览器密码管理器弹窗: 即使使用 JSON fetch 提交，Chrome 仍弹出"更新登录信息"
+  - 类型: enhancment
+  - 发现于: v1.0.3
+  - 实现于: v1.0.4
+  - 修复方案: `submitSettingsForm` 在 fetch 前临时将全部 `input[type="password"]` 改为 `type="text"`，
+    Chrome 的密码管理器不监控 text 字段，提交完成后再改回 `type="password"`
+
+- [x] URL 参数含中文: 重定向 URL 的 `error`/`msg` 参数直接传中文，浏览器地址栏显示乱码
+  - 类型: enhancment
+  - 发现于: v1.0.3
+  - 实现于: v1.0.4
+  - 修复方案: 所有「跳转 + 消息」改用英文代码（`?msg=kicked`、`?msg=cleared&count=3`、
+    `?error=host_empty` 等），`decodeUrlMsg` 函数在路由处理器中解码回中文
+ 
 ---
 
 ## 已实现功能 (Done)
