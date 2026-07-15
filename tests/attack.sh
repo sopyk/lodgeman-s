@@ -12,14 +12,30 @@ PASS="${PASS:-testpass}"
 ADMIN_USER="${ADMIN_USER:-admin}"
 ADMIN_PASS="${ADMIN_PASS:-admin123}"
 
+guard_environment() {
+  if [[ "$CONTAINER" != *-dev ]]; then
+    echo "❌ 错误：容器名 '$CONTAINER' 不以 -dev 结尾，拒绝执行"
+    echo "   请使用开发容器（如 CONTAINER=lodgeman-s-dev）"
+    exit 1
+  fi
+  local all_src
+  all_src=$(docker inspect "$CONTAINER" --format '{{range .Mounts}}{{.Source}}{{"\n"}}{{end}}' 2>/dev/null)
+  if [[ "$all_src" != *"_dev/"* ]]; then
+    echo "❌ 错误：容器 '$CONTAINER' 的所有挂载源路径均不包含 _dev/"
+    echo "   挂载源:"
+    echo "$all_src" | sed 's/^/      /'
+    echo "   拒绝执行以防止误操作生产环境"
+    exit 1
+  fi
+  echo "✅ 环境验证通过: $CONTAINER (开发容器)"
+}
+
 PASSED=0; FAILED=0; TOTAL=0
 
 setup() {
-  # 备份原配置到宿主机临时文件（容器内 bind mount 会直接写入宿主机路径）
   local bak="$(dirname "$0")/.routes.yaml.bak"
-  docker cp "$CONTAINER:/app/config/routes.yaml" "$bak" 2>/dev/null || true
-  # 容器内设测试配置
-  docker exec "$CONTAINER" sh -c "cat > /app/config/routes.yaml << 'YAML'
+  local tmp_config=$(mktemp /tmp/lodgeman-test-config-XXXXXX.yaml)
+  cat > "$tmp_config" << 'YAML'
 port: 4082
 password: testpass
 admin_username: admin
@@ -35,7 +51,10 @@ routes:
     target: http://127.0.0.1:4082
     auth: false
     description: NoAuth
-YAML" 2>/dev/null || true
+YAML
+  docker cp "$CONTAINER:/app/config/routes.yaml" "$bak" 2>/dev/null || true
+  docker cp "$tmp_config" "$CONTAINER:/app/config/routes.yaml"
+  rm -f "$tmp_config"
   docker restart "$CONTAINER" >/dev/null 2>&1
   sleep 3
 }
@@ -48,6 +67,8 @@ cleanup() {
   fi
   docker restart "$CONTAINER" >/dev/null 2>&1
 }
+
+trap cleanup EXIT
 
 ok()   { PASSED=$((PASSED+1)); echo "  ✅ $1"; }
 fail() { FAILED=$((FAILED+1)); echo "  ❌ $1 (期望 $2, 实际 $3)"; }
@@ -82,6 +103,7 @@ echo " LodgeManS 攻击模拟 & 功能测试"
 echo " Target: $TARGET"
 echo "═══════════════════════════════════════"
 
+guard_environment
 setup
 
 # ──────────────────────────────────────────
