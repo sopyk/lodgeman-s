@@ -10,7 +10,7 @@ jobs:
   mirror_code:
     runs-on: ubuntu-latest
     steps:
-      - uses: Yikun/hub-mirror-action@v1
+      - uses: Yikun/hub-mirror-action@v1.5
         with:
           src: github/${{ secrets.GH_USERNAME }}
           dst: gitee/${{ secrets.GITEE_USERNAME }}
