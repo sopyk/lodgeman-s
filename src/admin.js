@@ -1,6 +1,6 @@
 const crypto = require('crypto');
 
-const { saveConfig, verifyPassword, hashPassword } = require('./config.js');
+const { saveConfig, verifyPassword, hashPassword, loadConfig } = require('./config.js');
 const { audit } = require('./audit.js');
 
 const adminSessions = new Map();
@@ -512,7 +512,7 @@ ${sessionRows ? `<div class="table-wrap"><table class="sessions"><thead><tr><th 
 <script>
 (function(){var c=0,e=document.getElementById('refreshIndicator');if(e)e.textContent='10s后自动刷新'
 setInterval(function(){c=10-(Date.now()/1000|0)%10;if(e)e.textContent=c+'s后刷新'
-var addForm=document.getElementById('addRouteForm');if(location.href.indexOf('_edit')<0&&(!addForm||addForm.style.display!='table-row')&&c<=1){location.reload()}},1000)})();
+var addForm=document.getElementById('addRouteForm'),labelInput=document.querySelector('.label-input');if(location.href.indexOf('_edit')<0&&(!addForm||addForm.style.display!='table-row')&&(!labelInput||document.activeElement!==labelInput)&&c<=1){location.reload()}},1000)})();
 document.addEventListener('click',function(e){var t=e.target.closest('.label-display');if(!t||t.tagName==='INPUT')return;
 var sid=t.dataset.sid,val=t.textContent.replace(/^点击添加$/,'');t.innerHTML='<input class="label-input" value="'+val.replace(/"/g,'&quot;')+'">';
 var inp=t.querySelector('input');inp.focus();inp.select();
@@ -701,8 +701,9 @@ async function kickSession(req, res, backend) {
   const sid = params.get('sid') || '';
   const ip = req.socket.remoteAddress || '';
   let kicked = false;
+  const matchId = sid.endsWith('...') ? sid.slice(0, -3) : sid;
   for (const [id] of sessions) {
-    if (id.startsWith(sid.replace('...', ''))) {
+    if (id.startsWith(matchId)) {
       sessions.delete(id);
       audit('SESSION_KICK', `sid=${id.slice(0, 8)}...`, ip);
       kicked = true;
@@ -727,8 +728,9 @@ async function updateSessionLabel(req, res, backend) {
   const sid = params.get('sid') || '';
   const label = (params.get('label') || '').trim();
   const ip = req.socket.remoteAddress || '';
+  const matchId = sid.endsWith('...') ? sid.slice(0, -3) : sid;
   for (const [id, s] of backend.sessions) {
-    if (id.startsWith(sid.replace('...', ''))) {
+    if (id.startsWith(matchId)) {
       s.label = label || '';
       const safeLabel = (label || '').replace(/[\n\r]/g, '\\n');
       audit('SESSION_LABEL_UPDATE', `sid=${id.slice(0, 8)}... label=${safeLabel}`, ip);
@@ -800,8 +802,8 @@ async function changePassword(req, res, backend) {
   if (password !== confirm) {
     return renderSettings(req, res, backend, { type: 'error', text: '两次密码不一致' });
   }
-  config.password = require('./config.js').hashPassword(password);
-  require('./config.js').saveConfig(config);
+  config.password = hashPassword(password);
+  saveConfig(config);
   audit('PASSWORD_CHANGE', '', ip);
   renderSettings(req, res, backend, { type: 'success', text: '访问密码已更新' });
 }
@@ -825,8 +827,9 @@ async function changeAdmin(req, res, backend) {
     return renderSettings(req, res, backend, { type: 'error', text: '两次密码不一致' });
   }
   config.admin_username = username;
-  if (password) config.admin_password = require('./config.js').hashPassword(password);
-  require('./config.js').saveConfig(config);
+  if (password) config.admin_password = hashPassword(password);
+  adminSessions.clear();
+  saveConfig(config);
   audit('ADMIN_ACCOUNT_CHANGE', 'username=' + username, ip);
   renderSettings(req, res, backend, { type: 'success', text: '管理员账号已更新' });
 }
@@ -840,7 +843,7 @@ async function changeTimezone(req, res, backend) {
     return renderSettings(req, res, backend, { type: 'error', text: '无效的时区' });
   }
   config.timezone = tz;
-  require('./config.js').saveConfig(config);
+  saveConfig(config);
   audit('TIMEZONE_CHANGE', tz, req.socket.remoteAddress || '');
   renderSettings(req, res, backend, { type: 'success', text: `时区已设为 ${tz}` });
 }
@@ -849,7 +852,7 @@ function reloadConfig(req, res, backend) {
   if (req.method !== 'POST') return rd(res, '/_admin');
   const ip = req.socket.remoteAddress || '';
   try {
-    const newConfig = require('./config.js').loadConfig();
+    const newConfig = loadConfig();
     Object.assign(backend.config, newConfig);
     audit('CONFIG_RELOAD', '', ip);
     h(res, 200, '仪表盘', `${navBar()}<div class="card" style="text-align:center;padding:2rem"><div class="alert alert-success">配置已重载</div><a href="/_admin" style="font-size:.85rem;color:#0066ff">返回仪表盘</a></div>`);
@@ -868,7 +871,7 @@ function renderAbout(req, res, backend) {
 <h1 style="font-size:1.5rem;margin:0 0 .25rem">门房大爷LodgeManS</h1>
 <p style="color:#666;font-size:.85rem;margin:0 0 1.5rem">统一认证网关</p>
 <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.5rem">
-<div class="stat-item"><div class="num">v1.0.2</div><div style="font-size:.8rem;color:#888">当前版本</div></div>
+<div class="stat-item"><div class="num">v1.0.3</div><div style="font-size:.8rem;color:#888">当前版本</div></div>
 <div class="stat-item"><div class="num">MIT</div><div style="font-size:.8rem;color:#888">开源许可</div></div>
 </div>
 <h2 style="font-size:1.05rem;margin:0 0 .5rem">项目信息</h2>
