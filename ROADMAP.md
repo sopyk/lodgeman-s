@@ -147,6 +147,14 @@
   - 实现于: v1.0.3
   - 修复方案: 顶部 import 补 `loadConfig`，替换全部 4 处内联 `require` 为变量引用
 
+- [x] `tests/attack.sh` 误伤生产环境: 默认目标为生产容器 `lodgeman-s:4082`，`setup` 直接覆写 routes.yaml
+    且 `cleanup` 备份恢复不可靠（`.bak` 写容器可写层，重启后不可达）
+  - 类型: bug
+  - 发现于: v1.0.3
+  - 修复于: v1.0.3
+  - 修复方案: 默认目标改为 `lodgeman-s-dev:4081`；`setup` 先用 `docker cp` 备份到宿主机，
+    `cleanup` 从宿主机复制恢复，确保配置不丢失
+
 ---
 
 ## 已实现功能 (Done)

@@ -1,0 +1,15 @@
+port: 4082
+password: scrypt:eb3f1ea461cf949ba6cab68b7d02ba10:a03d5aa8e5e316ab5466c2f20ef7a2af1ed87ca9655c1565e3300acb37511759
+admin_username: admin
+admin_password: scrypt:56367bc2078fe6798d682cd74e0287dc:14bf0d1c0fc9ee3cb973204bec6b286ca8d57ee3ac1ac0d98e0764402cd6c83a
+session_max_age: 2592000
+timezone: Asia/Shanghai
+routes:
+  - host: test.example.com
+    target: http://127.0.0.1:4082
+    auth: true
+    description: Loopback
+  - host: noauth.example.com
+    target: http://127.0.0.1:4082
+    auth: false
+    description: NoAuth

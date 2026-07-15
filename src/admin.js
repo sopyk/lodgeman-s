@@ -112,6 +112,30 @@ function rd(res, url) {
   res.end();
 }
 
+function json(res, data) {
+  res.writeHead(200, { 'Content-Type': 'application/json' });
+  res.end(JSON.stringify(data));
+}
+
+const MSG = {
+  kicked: '已踢下线',
+  not_found: '未找到该会话',
+};
+
+const ERR = {
+  host_empty: 'Host 和目标地址不能为空',
+  invalid_index: '无效索引',
+};
+
+function decodeUrlMsg(key, type, params) {
+  const m = type === 'msg' ? MSG : ERR;
+  if (m[key]) return m[key];
+  if (key === 'cleared') return `已清空 ${params.get('count') || ''} 个会话`;
+  if (key === 'host_dup') return `主机名「${params.get('host') || ''}」已存在，不能重复`;
+  if (key === 'host_used') return `主机名「${params.get('host') || ''}」已被其他路由使用`;
+  return key;
+}
+
 function parseCookies(req) {
   const c = {};
   if (req.headers.cookie) {
@@ -186,8 +210,8 @@ async function handleAdmin(req, res, backend) {
     if (pathname === '/_admin' || pathname === '/_admin/') {
       const urlP = new URL(req.url, 'http://localhost');
       const editingIdx = parseInt(urlP.searchParams.get('_edit') || '-1', 10);
-      const qError = urlP.searchParams.get('error') || '';
-      const qMsg = urlP.searchParams.get('msg') || '';
+      const qError = decodeUrlMsg(urlP.searchParams.get('error') || '', 'error', urlP.searchParams);
+      const qMsg = decodeUrlMsg(urlP.searchParams.get('msg') || '', 'msg', urlP.searchParams);
       return renderDashboard(req, res, backend, editingIdx, qError, qMsg);
     }
     if (pathname === '/_admin/config/reload') {
@@ -253,8 +277,8 @@ function renderLogin(req, res, config) {
 <p style="text-align:center;color:#888;font-size:.8rem;margin-bottom:1rem;font-style:italic">首次使用</p>
 <form method="post">
 <div class="form-group"><label>管理员用户名</label><input name="username" value="${esc(config.admin_username)}" autofocus></div>
-<div class="form-group"><label>密码（至少6个字符）</label><div class="pwd-wrap"><input type="password" name="password" autocomplete="new-password"><button type="button" class="pwd-toggle" onclick="pwdtoggle(this)" aria-label="切换密码显示"><svg><use href="#eye"/></svg></button></div></div>
-<div class="form-group"><label>确认密码</label><div class="pwd-wrap"><input type="password" name="confirm" autocomplete="new-password"><button type="button" class="pwd-toggle" onclick="pwdtoggle(this)" aria-label="切换密码显示"><svg><use href="#eye"/></svg></button></div></div>
+<div class="form-group"><label>密码（至少6个字符）</label><div class="pwd-wrap"><input type="password" name="password" autocomplete="new-password"><button type="button" class="pwd-toggle" tabindex="-1" onclick="pwdtoggle(this)" aria-label="切换密码显示"><svg><use href="#eye"/></svg></button></div></div>
+<div class="form-group"><label>确认密码</label><div class="pwd-wrap"><input type="password" name="confirm" autocomplete="new-password"><button type="button" class="pwd-toggle" tabindex="-1" onclick="pwdtoggle(this)" aria-label="切换密码显示"><svg><use href="#eye"/></svg></button></div></div>
 <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:.5rem">注册</button>
 <p style="margin-top:.8rem;font-size:.78rem;color:#999;text-align:center;line-height:1.5">当前未设置管理员密码，请立即设置管理员密码。可以修改用户名。</p>
 </form></div>`);
@@ -285,8 +309,8 @@ function renderLogin(req, res, config) {
 <div class="alert alert-error">${esc(err)}</div>
 <form method="post">
 <div class="form-group"><label>管理员用户名</label><input name="username" value="${esc(username)}" autofocus></div>
-<div class="form-group"><label>密码（至少6个字符）</label><div class="pwd-wrap"><input type="password" name="password" autocomplete="new-password"><button type="button" class="pwd-toggle" onclick="pwdtoggle(this)" aria-label="切换密码显示"><svg><use href="#eye"/></svg></button></div></div>
-<div class="form-group"><label>确认密码</label><div class="pwd-wrap"><input type="password" name="confirm" autocomplete="new-password"><button type="button" class="pwd-toggle" onclick="pwdtoggle(this)" aria-label="切换密码显示"><svg><use href="#eye"/></svg></button></div></div>
+<div class="form-group"><label>密码（至少6个字符）</label><div class="pwd-wrap"><input type="password" name="password" autocomplete="new-password"><button type="button" class="pwd-toggle" tabindex="-1" onclick="pwdtoggle(this)" aria-label="切换密码显示"><svg><use href="#eye"/></svg></button></div></div>
+<div class="form-group"><label>确认密码</label><div class="pwd-wrap"><input type="password" name="confirm" autocomplete="new-password"><button type="button" class="pwd-toggle" tabindex="-1" onclick="pwdtoggle(this)" aria-label="切换密码显示"><svg><use href="#eye"/></svg></button></div></div>
 <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:.5rem">注册</button>
 <p style="margin-top:.8rem;font-size:.78rem;color:#999;text-align:center;line-height:1.5">当前未设置管理员密码，请立即设置管理员密码。可以修改用户名。</p>
 </form></div>`);
@@ -323,7 +347,7 @@ function renderLogin(req, res, config) {
 <p style="text-align:center;color:#888;font-size:.8rem;margin-bottom:1rem;font-style:italic">"领导回来啦～"</p>
 <form method="post">
 <div class="form-group"><label>用户名</label><input name="username" autofocus></div>
-<div class="form-group"><label>密码</label><div class="pwd-wrap"><input type="password" name="password" autocomplete="current-password"><button type="button" class="pwd-toggle" onclick="pwdtoggle(this)" aria-label="切换密码显示"><svg><use href="#eye"/></svg></button></div></div>
+<div class="form-group"><label>密码</label><div class="pwd-wrap"><input type="password" name="password" autocomplete="current-password"><button type="button" class="pwd-toggle" tabindex="-1" onclick="pwdtoggle(this)" aria-label="切换密码显示"><svg><use href="#eye"/></svg></button></div></div>
 <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:.5rem">登录</button>
 </form></div>`);
   }
@@ -358,7 +382,7 @@ function renderLogin(req, res, config) {
 <div class="alert alert-error">用户名或密码错误</div>
 <form method="post">
 <div class="form-group"><label>用户名</label><input name="username" value="${esc(params.get('username') || '')}" autofocus></div>
-<div class="form-group"><label>密码</label><div class="pwd-wrap"><input type="password" name="password" autocomplete="current-password"><button type="button" class="pwd-toggle" onclick="pwdtoggle(this)" aria-label="切换密码显示"><svg><use href="#eye"/></svg></button></div></div>
+<div class="form-group"><label>密码</label><div class="pwd-wrap"><input type="password" name="password" autocomplete="current-password"><button type="button" class="pwd-toggle" tabindex="-1" onclick="pwdtoggle(this)" aria-label="切换密码显示"><svg><use href="#eye"/></svg></button></div></div>
 <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:.5rem">登录</button>
 </form></div>`);
     }
@@ -471,6 +495,7 @@ ${er ? `<div style="padding:.3rem .6rem .5rem;background:#fef2f2;font-size:.78re
 </td></tr>`;
 
   h(res, 200, '仪表盘', `${navBar()}
+${editError && editingIdx < 0 ? `<div class="alert alert-error">${esc(editError)}</div>` : ''}
 ${successMsg ? `<div class="alert alert-success">${esc(successMsg)}</div>` : ''}
 <div class="stat">
 <div class="stat-item"><div class="num">${config.routes.length}</div><div class="lbl">路由</div></div>
@@ -554,10 +579,10 @@ async function addRoute(req, res, backend) {
   const rawTarget = (params.get('target') || '').trim();
   const target = rawTarget.includes('://') ? rawTarget : `http://${rawTarget}`;
   if (!host || !rawTarget) {
-    return rd(res, '/_admin?error=' + encodeURIComponent('Host 和目标地址不能为空'));
+    return rd(res, '/_admin?error=host_empty');
   }
   if (config.routes.some(r => r.host === host)) {
-    return rd(res, '/_admin?error=' + encodeURIComponent(`主机名「${host}」已存在，不能重复`));
+    return rd(res, '/_admin?error=host_dup&host=' + encodeURIComponent(host));
   }
   const ip = req.socket.remoteAddress || '';
   config.routes.push({
@@ -577,7 +602,7 @@ async function editRoute(req, res, backend) {
   const { config } = backend;
 
   if (isNaN(idx) || idx < 0 || idx >= config.routes.length) {
-    return rd(res, '/_admin?error=' + encodeURIComponent('无效索引'));
+    return rd(res, '/_admin?error=invalid_index');
   }
 
   if (req.method === 'GET') {
@@ -590,11 +615,11 @@ async function editRoute(req, res, backend) {
   const rawTarget = (params.get('target') || '').trim();
   const target = rawTarget.includes('://') ? rawTarget : `http://${rawTarget}`;
   if (!host || !rawTarget) {
-    return rd(res, '/_admin?_edit=' + idx + '&error=' + encodeURIComponent('Host 和目标地址不能为空'));
+    return rd(res, '/_admin?_edit=' + idx + '&error=host_empty');
   }
   const dup = config.routes.findIndex((r, i) => r.host === host && i !== idx);
   if (dup !== -1) {
-    return rd(res, '/_admin?_edit=' + idx + '&error=' + encodeURIComponent(`主机名「${host}」已被其他路由使用`));
+    return rd(res, '/_admin?_edit=' + idx + '&error=host_used&host=' + encodeURIComponent(host));
   }
   const ip = req.socket.remoteAddress || '';
   config.routes[idx] = {
@@ -710,7 +735,7 @@ async function kickSession(req, res, backend) {
       break;
     }
   }
-  rd(res, '/_admin?msg=' + encodeURIComponent(kicked ? '已踢下线' : '未找到该会话'));
+  rd(res, '/_admin?msg=' + (kicked ? 'kicked' : 'not_found'));
 }
 
 function clearSessions(req, res, backend) {
@@ -719,7 +744,7 @@ function clearSessions(req, res, backend) {
   const count = backend.sessions.size;
   backend.sessions.clear();
   audit('SESSION_CLEAR', 'all sessions cleared', ip);
-  rd(res, '/_admin?msg=' + encodeURIComponent(`已清空 ${count} 个会话`));
+  rd(res, '/_admin?msg=cleared&count=' + count);
 }
 
 async function updateSessionLabel(req, res, backend) {
@@ -759,23 +784,23 @@ function renderSettings(req, res, backend, alert) {
     `<option value="${tz}"${config.timezone === tz ? ' selected' : ''}>${tz}</option>`
   ).join('');
   h(res, 200, '设置', `${navBar()}
-${alert ? `<div class="alert alert-${alert.type}">${esc(alert.text)}</div>` : ''}
+<div id="settings-alert">${alert ? `<div class="alert alert-${alert.type}">${esc(alert.text)}</div>` : ''}</div>
 <div class="settings-grid">
 <div class="card">
 <h2>修改访问密码</h2>
-<form method="post" action="/_admin/settings/password">
-<div class="form-group"><label>新访问密码</label><div class="pwd-wrap"><input type="password" name="password" autocomplete="new-password" required><button type="button" class="pwd-toggle" onclick="pwdtoggle(this)" aria-label="切换密码显示"><svg><use href="#eye"/></svg></button></div></div>
-<div class="form-group"><label>确认新密码</label><div class="pwd-wrap"><input type="password" name="confirm" autocomplete="new-password" required><button type="button" class="pwd-toggle" onclick="pwdtoggle(this)" aria-label="切换密码显示"><svg><use href="#eye"/></svg></button></div></div>
+<form method="post" action="/_admin/settings/password" onsubmit="submitSettingsForm(this);return false">
+<div class="form-group"><label>新访问密码</label><div class="pwd-wrap"><input type="password" name="password" autocomplete="new-password" required><button type="button" class="pwd-toggle" tabindex="-1" onclick="pwdtoggle(this)" aria-label="切换密码显示"><svg><use href="#eye"/></svg></button></div></div>
+<div class="form-group"><label>确认新密码</label><div class="pwd-wrap"><input type="password" name="confirm" autocomplete="new-password" required><button type="button" class="pwd-toggle" tabindex="-1" onclick="pwdtoggle(this)" aria-label="切换密码显示"><svg><use href="#eye"/></svg></button></div></div>
 <button class="btn btn-primary">保存</button>
 </form>
 </div>
 <div class="card">
 <h2>修改管理员账号</h2>
-<form method="post" action="/_admin/settings/admin">
-<div class="form-group"><label>当前管理员密码</label><div class="pwd-wrap"><input type="password" name="current" autocomplete="current-password" required><button type="button" class="pwd-toggle" onclick="pwdtoggle(this)" aria-label="切换密码显示"><svg><use href="#eye"/></svg></button></div></div>
+<form method="post" action="/_admin/settings/admin" onsubmit="submitSettingsForm(this);return false">
+<div class="form-group"><label>当前管理员密码</label><div class="pwd-wrap"><input type="password" name="current" autocomplete="current-password" required><button type="button" class="pwd-toggle" tabindex="-1" onclick="pwdtoggle(this)" aria-label="切换密码显示"><svg><use href="#eye"/></svg></button></div></div>
 <div class="form-group"><label>新用户名</label><input name="username" value="${esc(config.admin_username)}" required></div>
-<div class="form-group"><label>新密码</label><div class="pwd-wrap"><input type="password" name="password" autocomplete="new-password" placeholder="留空则不修改"><button type="button" class="pwd-toggle" onclick="pwdtoggle(this)" aria-label="切换密码显示"><svg><use href="#eye"/></svg></button></div></div>
-<div class="form-group"><label>确认新密码</label><div class="pwd-wrap"><input type="password" name="confirm" autocomplete="new-password" placeholder="留空则不修改"><button type="button" class="pwd-toggle" onclick="pwdtoggle(this)" aria-label="切换密码显示"><svg><use href="#eye"/></svg></button></div></div>
+<div class="form-group"><label>新密码</label><div class="pwd-wrap"><input type="password" name="password" autocomplete="new-password" placeholder="留空则不修改"><button type="button" class="pwd-toggle" tabindex="-1" onclick="pwdtoggle(this)" aria-label="切换密码显示"><svg><use href="#eye"/></svg></button></div></div>
+<div class="form-group"><label>确认新密码</label><div class="pwd-wrap"><input type="password" name="confirm" autocomplete="new-password" placeholder="留空则不修改"><button type="button" class="pwd-toggle" tabindex="-1" onclick="pwdtoggle(this)" aria-label="切换密码显示"><svg><use href="#eye"/></svg></button></div></div>
 <button class="btn btn-primary">保存</button>
 </form>
 </div>
@@ -786,31 +811,37 @@ ${alert ? `<div class="alert alert-${alert.type}">${esc(alert.text)}</div>` : ''
 <button class="btn btn-primary">保存</button>
 </form>
 </div>
-</div>`);
+</div>
+<script>
+async function submitSettingsForm(form){var e=document.getElementById('settings-alert');e.innerHTML='<div class="alert" style="color:#888;font-size:.8rem;padding:.5rem .75rem">提交中...</div>';try{var d={};for(var p of new FormData(form))d[p[0]]=p[1];var r=await fetch(form.action,{method:'POST',body:JSON.stringify(d),headers:{'Content-Type':'application/json','X-Requested-With':'XMLHttpRequest'}});var j=await r.json();e.innerHTML='<div class="alert alert-'+(j.ok?'success':'error')+'">'+j.text+'</div>'}catch(x){e.innerHTML='<div class="alert alert-error">网络错误</div>'}}
+</script>`);
 }
 
 async function changePassword(req, res, backend) {
   const body = await readBody(req);
-  const params = new URLSearchParams(body);
+  const isJson = req.headers['x-requested-with'] === 'XMLHttpRequest';
+  const params = isJson ? new URLSearchParams(Object.entries(JSON.parse(body))) : new URLSearchParams(body);
   const { config } = backend;
   const password = params.get('password') || '';
   const confirm = params.get('confirm') || '';
   const ip = req.socket.remoteAddress || '';
   if (password.length < 6) {
-    return renderSettings(req, res, backend, { type: 'error', text: '密码至少 6 位' });
+    return isJson ? json(res, { ok: false, text: '密码至少 6 位' }) : renderSettings(req, res, backend, { type: 'error', text: '密码至少 6 位' });
   }
   if (password !== confirm) {
-    return renderSettings(req, res, backend, { type: 'error', text: '两次密码不一致' });
+    return isJson ? json(res, { ok: false, text: '两次密码不一致' }) : renderSettings(req, res, backend, { type: 'error', text: '两次密码不一致' });
   }
   config.password = hashPassword(password);
   saveConfig(config);
   audit('PASSWORD_CHANGE', '', ip);
-  renderSettings(req, res, backend, { type: 'success', text: '访问密码已更新' });
+  const msg = { ok: true, text: '访问密码已更新' };
+  isJson ? json(res, msg) : renderSettings(req, res, backend, { type: 'success', text: '访问密码已更新' });
 }
 
 async function changeAdmin(req, res, backend) {
   const body = await readBody(req);
-  const params = new URLSearchParams(body);
+  const isJson = req.headers['x-requested-with'] === 'XMLHttpRequest';
+  const params = isJson ? new URLSearchParams(Object.entries(JSON.parse(body))) : new URLSearchParams(body);
   const { config } = backend;
   const current = params.get('current') || '';
   const username = (params.get('username') || '').trim();
@@ -818,20 +849,21 @@ async function changeAdmin(req, res, backend) {
   const confirm = params.get('confirm') || '';
   const ip = req.socket.remoteAddress || '';
   if (!verifyPassword(current, config.admin_password)) {
-    return renderSettings(req, res, backend, { type: 'error', text: '当前管理员密码错误' });
+    return isJson ? json(res, { ok: false, text: '当前管理员密码错误' }) : renderSettings(req, res, backend, { type: 'error', text: '当前管理员密码错误' });
   }
   if (!username) {
-    return renderSettings(req, res, backend, { type: 'error', text: '用户名不能为空' });
+    return isJson ? json(res, { ok: false, text: '用户名不能为空' }) : renderSettings(req, res, backend, { type: 'error', text: '用户名不能为空' });
   }
   if (password && password !== confirm) {
-    return renderSettings(req, res, backend, { type: 'error', text: '两次密码不一致' });
+    return isJson ? json(res, { ok: false, text: '两次密码不一致' }) : renderSettings(req, res, backend, { type: 'error', text: '两次密码不一致' });
   }
   config.admin_username = username;
   if (password) config.admin_password = hashPassword(password);
   adminSessions.clear();
   saveConfig(config);
   audit('ADMIN_ACCOUNT_CHANGE', 'username=' + username, ip);
-  renderSettings(req, res, backend, { type: 'success', text: '管理员账号已更新' });
+  const msg = { ok: true, text: '管理员账号已更新' };
+  isJson ? json(res, msg) : renderSettings(req, res, backend, { type: 'success', text: '管理员账号已更新' });
 }
 
 async function changeTimezone(req, res, backend) {
