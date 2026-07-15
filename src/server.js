@@ -7,10 +7,19 @@ const { handleAuth, getSession, parseCookies } = require('./auth.js');
 const { handleAdmin } = require('./admin.js');
 const { proxyRequest, proxyUpgrade } = require('./proxy.js');
 const { audit } = require('./audit.js');
+const { loadSessions, saveSessions } = require('./session.js');
 
 const config = loadConfig();
 upgradePlaintextConfig(config);
-const sessions = new Map();
+
+const sessions = loadSessions();
+const origSet = sessions.set.bind(sessions);
+const origDelete = sessions.delete.bind(sessions);
+const origClear = sessions.clear.bind(sessions);
+sessions.set = function(k, v) { origSet(k, v); saveSessions(sessions); return this; };
+sessions.delete = function(k) { const r = origDelete(k); saveSessions(sessions); return r; };
+sessions.clear = function() { origClear(); saveSessions(sessions); };
+
 const backend = { config, sessions };
 
 setInterval(() => {
@@ -53,7 +62,13 @@ const server = http.createServer((req, res) => {
   }
 
   if (req.url.startsWith('/assets/')) {
-    const filePath = path.join(__dirname, '..', req.url);
+    const resolved = path.resolve(__dirname, '..', 'assets');
+    const filePath = path.resolve(path.join(__dirname, '..', req.url));
+    if (!filePath.startsWith(resolved)) {
+      res.writeHead(403, { 'Content-Type': 'text/plain; charset=utf-8' });
+      res.end('Forbidden');
+      return;
+    }
     const ext = path.extname(filePath).toLowerCase();
     const mime = { '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.gif': 'image/gif', '.svg': 'image/svg+xml', '.ico': 'image/x-icon', '.webp': 'image/webp' };
     try {
@@ -116,7 +131,12 @@ server.on('upgrade', (req, socket, head) => {
 });
 
 process.on('uncaughtException', err => {
-  console.error('Uncaught exception:', err.message);
+  console.error('FATAL: uncaught exception —', err);
+  process.exit(1);
+});
+
+process.on('unhandledRejection', (reason) => {
+  console.error('Unhandled rejection —', reason);
 });
 
 const PORT = config.port;

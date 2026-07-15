@@ -43,6 +43,7 @@ function loadConfig() {
     const yaml = require('js-yaml');
     const raw = yaml.load(fs.readFileSync(CONFIG_PATH, 'utf8'));
     if (!raw || typeof raw !== 'object') throw new Error('empty config');
+    if (!raw.admin_password && !raw.password) throw new Error('config missing both user and admin password, refusing to start');
     return {
       port: raw.port || DEFAULTS.port,
       password: raw.password ?? DEFAULTS.password,
@@ -53,8 +54,8 @@ function loadConfig() {
       timezone: raw.timezone || DEFAULTS.timezone,
     };
   } catch (err) {
-    console.error('Config load failed, using defaults:', err.message);
-    return { ...DEFAULTS };
+    console.error('FATAL: config load failed:', err.message);
+    throw err;
   }
 }
 

@@ -98,16 +98,25 @@ function handleAuth(req, res, backend) {
     return;
   }
 
+  const MAX_BODY = 1048576;
+
   if (req.method === 'POST') {
     let body = '';
-    req.on('data', c => body += c);
+    let size = 0;
+    req.on('data', c => { body += c; size += c.length; });
     req.on('end', () => {
+      if (size > MAX_BODY) {
+        res.writeHead(413, { 'Content-Type': 'text/plain; charset=utf-8' });
+        res.end('Payload too large');
+        return;
+      }
       const params = new URLSearchParams(body);
       if (verifyPassword(params.get('password') || '', config.password)) {
         audit('LOGIN_OK', 'user login', ip);
 
         const remember = params.get('remember') === '1';
-        const dur = parseInt(params.get('duration') || '3600', 10);
+        let dur = parseInt(params.get('duration') || '3600', 10);
+        if (!DURATIONS.some(d => d.value === dur)) dur = 3600;
         const durMs = dur * 1000;
         const id = crypto.randomBytes(32).toString('hex');
         const now = Date.now();
