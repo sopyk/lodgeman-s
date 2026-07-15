@@ -10,6 +10,8 @@ services:
     ports:
       - "4082:4082"
     volumes:
+      # 源码目录（开发热更用；生产环境取消注释即可切回镜像内代码）
+      - ../src:/app/src
       # 配置目录（选择一种）：
       # 1. bind mount（配置在宿主机上，方便编辑）
       - ../config:/app/config

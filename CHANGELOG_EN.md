@@ -2,6 +2,34 @@
 
 # Changelog
 
+## 1.0.3 (2026-07-15)
+
+### Security
+
+- **Path traversal**: Path sanitization with whitelist check for `/assets/`, unauthorized access returns 403
+- **CSRF**: `deleteRoute`/`clearSessions`/`reloadConfig`/`kickSession` restricted to POST only
+- **Body size limit**: Request body capped at 1MB, returns 413 if exceeded
+- **Host header leak**: Strip `host`/`connection` headers before proxying to prevent Host Header Injection
+- **Log injection**: Escape `\n`/`\r` in Label field before writing audit logs
+- **Password change invalidates sessions**: Clear all admin sessions on password change, preventing old cookies from lingering
+
+### Fixes
+
+- **Session persistence**: New `src/session.js`, sessions persisted to `data/sessions.json`, auto-restored on container restart
+- **uncaughtException**: Changed to `process.exit(1)` to avoid hung state; added `unhandledRejection` logging
+- **Audit log callback**: Errors now logged via `console.error` instead of silent failure
+- **WebSocket headers**: Forward all backend response headers on WebSocket upgrade, not just set-cookie
+- **adminSessions leak**: Periodic cleanup of expired admin sessions every hour
+- **Config load failure**: Throw on error instead of returning defaults, ensuring admin awareness
+- **Duration validation**: Invalid duration values fall back to default 1 hour
+- **Proxy timeout**: Backend proxy connections set to 10s timeout, returns 502 on timeout
+- **SID prefix matching**: `kickSession`/`updateSessionLabel` use explicit `endsWith('...')` check instead of fragile `.replace('...', '')`
+
+### Improvements
+
+- **Docker dev experience**: `compose.yaml` adds `src/` bind mount, code changes apply without rebuild
+- **Code consistency**: Removed spurious inline `require()` calls in `admin.js`, unified with top-level imports
+
 ## 1.0.2 (2026-07-14)
 
 ### Fixes
