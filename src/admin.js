@@ -282,8 +282,8 @@ function renderLogin(req, res, config) {
       if (size > MAX_BODY) { h(res, 413, '错误', '<div class="card"><div class="alert alert-error">请求体过大</div></div>'); return; }
       const params = new URLSearchParams(body);
       const username = (params.get('username') || '').trim();
-  const password = params.get('new_access_pwd') || '';
-  const confirm = params.get('confirm') || '';
+      const password = params.get('password') || '';
+      const confirm = params.get('confirm') || '';
 
       const err = !username ? '请输入管理员用户名'
         : username.length < 2 ? '用户名至少2个字符'
@@ -809,7 +809,7 @@ async function changePassword(req, res, backend) {
   const body = await readBody(req);
   const params = new URLSearchParams(body);
   const { config } = backend;
-  const password = params.get('password') || '';
+  const password = params.get('new_access_pwd') || '';
   const confirm = params.get('confirm') || '';
   const ip = req.socket.remoteAddress || '';
   if (password.length < 6) {
@@ -887,7 +887,7 @@ function renderAbout(req, res, backend) {
 <h1 style="font-size:1.5rem;margin:0 0 .25rem">门房大爷LodgeManS</h1>
 <p style="color:#666;font-size:.85rem;margin:0 0 1.5rem">统一认证网关</p>
 <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.5rem">
-<div class="stat-item"><div class="num">v1.0.3</div><div style="font-size:.8rem;color:#888">当前版本</div></div>
+<div class="stat-item"><div class="num">v1.0.5</div><div style="font-size:.8rem;color:#888">当前版本</div></div>
 <div class="stat-item"><div class="num">MIT</div><div style="font-size:.8rem;color:#888">开源许可</div></div>
 </div>
 <h2 style="font-size:1.05rem;margin:0 0 .5rem">项目信息</h2>
