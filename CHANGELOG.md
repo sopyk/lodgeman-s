@@ -2,6 +2,22 @@
 
 # 更新日志
 
+## 1.0.4 (2026-07-16)
+
+### 修复
+
+- **测试脚本误伤生产环境**：`tests/attack.sh` 默认目标改为 dev 容器，`setup`/`cleanup` 改用 `docker cp` 可靠备份恢复配置；增加环境检查（容器名必须含 `-dev` 后缀），防止误伤生产环境
+- **浏览器密码填充混淆**：访问密码页和管理员登录页密码字段同名 `name="password"`，浏览器无法区分两套密码。改为访问密码页使用 `name="access_pwd"`，测试脚本同步更新；登录页密码框改用 `type="text"` + CSS `-webkit-text-security:disc`，Chrome 不识别为密码字段，彻底绕过密码管理器
+- **Tab 键落在眼睛按钮**：密码框切换显示的眼睛按钮 (`<button>`) 在 Tab 键顺序中，Tab 键无法正常跳转到下一输入框。所有 `.pwd-toggle` 按钮增加 `tabindex="-1"`
+- **设置页表单 JSON 解析失败**：`submitSettingsForm` 使用 `new FormData(form)` 提交，浏览器编码为 `multipart/form-data`，后端 `URLSearchParams` 无法解析，导致管理员密码修改始终报"当前密码错误"。改为提交 `Content-Type: application/json`
+- **addRoute 错误未显示**：`addRoute` 校验失败跳转到 `/?error=...`，但页面仅在编辑模式渲染错误，添加路由的错误消息被静默丢弃。改为非编辑模式时在页面顶部显示
+- **设置页密码字段名冲突**：设置页"修改访问密码"表单的"新访问密码"字段使用 `name="password"`，与管理员密码字段同名，Chrome 自动填充混淆。改为 `name="new_access_pwd"`
+
+### 改进
+
+- **设置页保存不再触发浏览器密码管理器**：`submitSettingsForm` 在 fetch 前将 `input[type="password"]` 临时改为 `type="text"`，阻止 Chrome 弹出"更新登录信息"提示
+- **URL 参数不再包含中文**：重定向 URL 的 `error`/`msg` 参数改用英文代码（如 `?msg=cleared&count=3`），服务端 `decodeUrlMsg` 转回中文显示，地址栏不再出现中文字
+
 ## 1.0.3 (2026-07-15)
 
 ### 安全修复
