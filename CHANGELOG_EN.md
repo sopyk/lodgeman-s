@@ -2,6 +2,22 @@
 
 # Changelog
 
+## 1.0.4 (2026-07-16)
+
+### Fixes
+
+- **Test script damaged production**: `tests/attack.sh` now defaults to dev container; `setup`/`cleanup` use `docker cp` for reliable config backup/restore; added environment guard (container name must end with `-dev`), preventing accidental production damage
+- **Browser password fill confusion**: Access password and admin login password fields shared the same `name="password"`, making the browser unable to distinguish between the two passwords. Changed access password form to use `name="access_pwd"`; sync updated test scripts. Login page password field changed to `type="text"` + CSS `-webkit-text-security:disc`, so Chrome no longer recognizes it as a password field, completely bypassing the password manager
+- **Tab key stuck on eye toggle**: The password reveal button (`<button>`) was in the Tab order, preventing Tab from reaching the next input. Added `tabindex="-1"` to all `.pwd-toggle` buttons
+- **Settings form JSON parse failure**: `submitSettingsForm` used `new FormData(form)`, encoding as `multipart/form-data`, which `URLSearchParams` on the backend couldn't parse. Changed to submit `Content-Type: application/json`
+- **addRoute error not shown**: Route validation failures redirected to `/?error=...` but the error only rendered in edit mode, silently discarding add-route errors. Changed to show errors at page top in non-edit mode too
+- **Settings form field name conflict**: The "new access password" field in settings used `name="password"`, same as the admin password field, causing Chrome autofill confusion. Changed to `name="new_access_pwd"`
+
+### Improvements
+
+- **Settings save no longer triggers browser password manager**: `submitSettingsForm` temporarily changes all `input[type="password"]` to `type="text"` before fetch, preventing Chrome's "update login" prompt; restores after submission
+- **URL params no longer contain Chinese characters**: Redirect URL `error`/`msg` params now use English codes (e.g. `?msg=cleared&count=3`), decoded back to Chinese by `decodeUrlMsg` on the server side
+
 ## 1.0.3 (2026-07-15)
 
 ### Security
@@ -29,12 +45,6 @@
 
 - **Docker dev experience**: `compose.yaml` adds `src/` bind mount, code changes apply without rebuild
 - **Code consistency**: Removed spurious inline `require()` calls in `admin.js`, unified with top-level imports
-
-## 1.0.4 (Unreleased)
-
-### Fixes
-
-- **Test script damaged production**: `tests/attack.sh` now defaults to dev container; `setup`/`cleanup` use `docker cp` for reliable config backup/restore, preventing accidental production damage
 
 ## 1.0.2 (2026-07-14)
 
