@@ -1,6 +1,6 @@
 {
   "name": "lodgeman-s",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "门房大爷LodgeManS — 统一认证反向代理",
   "main": "src/server.js",
   "private": true,
