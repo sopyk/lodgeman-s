@@ -51,7 +51,7 @@ button:hover{background:#0052cc}
 .pwd-wrap input{flex:1;padding-right:2rem}
 .pwd-toggle{position:absolute;right:2px;top:1px;bottom:1px;background:none;border:none;cursor:pointer;padding:0;line-height:1;user-select:none;display:flex;align-items:center;justify-content:center;width:28px;height:auto}
 button.pwd-toggle:hover{background:none}
-.pwd-toggle svg{width:18px;height:18px;fill:none;stroke:#999;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+.pwd-mask{-webkit-text-security:disc}.pwd-toggle svg{width:18px;height:18px;fill:none;stroke:#999;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
 .pwd-toggle:hover svg{stroke:#666}
 </style></head>
 <body>
@@ -61,7 +61,7 @@ button.pwd-toggle:hover{background:none}
 <p class="desc">统一认证网关</p>
 <p class="desc" style="font-style:italic">"先来登个记～"</p>
 ALERTS
-<div class="pwd-wrap"><input type="password" name="password" placeholder="密码" autofocus><button type="button" class="pwd-toggle" onclick="var i=this.previousElementSibling,e=this.querySelector('use');if(i.type==='password'){i.type='text';e.setAttribute('href','#eye-off')}else{i.type='password';e.setAttribute('href','#eye')}" aria-label="切换密码显示"><svg><use href="#eye"/></svg></button></div>
+<div class="pwd-wrap"><input type="text" class="pwd-mask" name="access_pwd" placeholder="密码" autocomplete="off" autofocus><button type="button" class="pwd-toggle" tabindex="-1" onclick="var i=this.previousElementSibling,e=this.querySelector('use');if(i.type==='text'){i.type='password';e.setAttribute('href','#eye-off')}else{i.type='text';e.setAttribute('href','#eye')}" aria-label="切换密码显示"><svg><use href="#eye"/></svg></button></div>
 <svg style="display:none"><symbol id="eye" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></symbol><symbol id="eye-off" viewBox="0 0 24 24"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/><path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"/></symbol></svg>
 <div class="check-row">
 <div><label><input type="checkbox" name="remember" value="1" checked> 保持登录</label></div>
@@ -111,7 +111,7 @@ function handleAuth(req, res, backend) {
         return;
       }
       const params = new URLSearchParams(body);
-      if (verifyPassword(params.get('password') || '', config.password)) {
+      if (verifyPassword(params.get('access_pwd') || '', config.password)) {
         audit('LOGIN_OK', 'user login', ip);
 
         const remember = params.get('remember') === '1';

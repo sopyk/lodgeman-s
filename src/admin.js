@@ -49,7 +49,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .badge-red{background:#fef2f2;color:#b91c1c}
 .badge-green{background:#f0fdf4;color:#166534}
 code{background:#f5f5f5;padding:.1rem .3rem;border-radius:4px;font-size:.8rem}
-.pwd-wrap{position:relative;display:flex;align-items:center}.pwd-wrap input{flex:1;padding-right:2rem}.pwd-toggle{position:absolute;right:2px;background:none;border:none;cursor:pointer;padding:0;line-height:1;user-select:none;display:flex;align-items:center;justify-content:center;width:28px;height:100%}.pwd-toggle svg{width:18px;height:18px;fill:none;stroke:#999;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}.pwd-toggle:hover svg{stroke:#666}
+.pwd-wrap{position:relative;display:flex;align-items:center}.pwd-wrap input{flex:1;padding-right:2rem}.pwd-mask{-webkit-text-security:disc}.pwd-toggle{position:absolute;right:2px;background:none;border:none;cursor:pointer;padding:0;line-height:1;user-select:none;display:flex;align-items:center;justify-content:center;width:28px;height:100%}.pwd-toggle svg{width:18px;height:18px;fill:none;stroke:#999;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}.pwd-toggle:hover svg{stroke:#666}
 table{width:100%;border-collapse:collapse}
 .sessions{table-layout:fixed}
 th{text-align:left;font-weight:600;padding:.55rem .4rem;border-bottom:2px solid #eee;font-size:.8rem;color:#555}
@@ -88,6 +88,21 @@ th,td{padding:.35rem .25rem;font-size:.75rem}
 }
 `;
 
+function decodeUrlMsg(s) {
+  if (!s) return '';
+  if (/[\u4e00-\u9fff]/.test(s)) return s;
+  const map = {
+    'host_empty': 'Host 和目标地址不能为空',
+    'kicked': '已踢下线',
+    'not_found': '未找到该会话',
+    'index_invalid': '无效索引',
+  };
+  const m = s.match(/^cleared_(\d+)$/); if (m) return '已清空 ' + m[1] + ' 个会话';
+  const m2 = s.match(/^host_dup_(.+)$/); if (m2) return '主机名「' + m2[1] + '」已存在，不能重复';
+  const m3 = s.match(/^host_dup_other_(.+)$/); if (m3) return '主机名「' + m3[1] + '」已被其他路由使用';
+  return map[s] || s;
+}
+
 function tag(s, ...vals) {
   let r = s[0];
   for (let i = 0; i < vals.length; i++) r += vals[i] + s[i + 1];
@@ -95,7 +110,7 @@ function tag(s, ...vals) {
 }
 
 function page(title, content) {
-  return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title} · 门房大爷</title><link rel="icon" href="/assets/favicon.png"><style>${CSS}</style></head><body><svg style="display:none"><symbol id="eye" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></symbol><symbol id="eye-off" viewBox="0 0 24 24"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/><path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"/></symbol></svg><div class="page">${content}</div><script>function pwdtoggle(b){var i=b.previousElementSibling,e=b.querySelector('use');if(i.type==='password'){i.type='text';e.setAttribute('href','#eye-off')}else{i.type='password';e.setAttribute('href','#eye')}}</script></body></html>`;
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title} · 门房大爷</title><link rel="icon" href="/assets/favicon.png"><style>${CSS}</style></head><body><svg style="display:none"><symbol id="eye" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></symbol><symbol id="eye-off" viewBox="0 0 24 24"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/><path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"/></symbol></svg><div class="page">${content}</div><script>function pwdtoggle(b){var i=b.previousElementSibling,e=b.querySelector('use');if(i.classList.contains('pwd-mask')){i.classList.remove('pwd-mask');e.setAttribute('href','#eye-off')}else if(i.type==='password'){i.type='text';e.setAttribute('href','#eye-off')}else if(i.type==='text'&&!i.classList.contains('pwd-mask')){i.type='password';e.setAttribute('href','#eye')}else{i.classList.add('pwd-mask');e.setAttribute('href','#eye')}}</script></body></html>`;
 }
 
 function navBar() {
@@ -253,8 +268,8 @@ function renderLogin(req, res, config) {
 <p style="text-align:center;color:#888;font-size:.8rem;margin-bottom:1rem;font-style:italic">首次使用</p>
 <form method="post">
 <div class="form-group"><label>管理员用户名</label><input name="username" value="${esc(config.admin_username)}" autofocus></div>
-<div class="form-group"><label>密码（至少6个字符）</label><div class="pwd-wrap"><input type="password" name="password"><button type="button" class="pwd-toggle" onclick="pwdtoggle(this)" aria-label="切换密码显示"><svg><use href="#eye"/></svg></button></div></div>
-<div class="form-group"><label>确认密码</label><div class="pwd-wrap"><input type="password" name="confirm"><button type="button" class="pwd-toggle" onclick="pwdtoggle(this)" aria-label="切换密码显示"><svg><use href="#eye"/></svg></button></div></div>
+<div class="form-group"><label>密码（至少6个字符）</label><div class="pwd-wrap"><input type="password" name="password"><button type="button" class="pwd-toggle" tabindex="-1" onclick="pwdtoggle(this)" aria-label="切换密码显示"><svg><use href="#eye"/></svg></button></div></div>
+<div class="form-group"><label>确认密码</label><div class="pwd-wrap"><input type="password" name="confirm"><button type="button" class="pwd-toggle" tabindex="-1" onclick="pwdtoggle(this)" aria-label="切换密码显示"><svg><use href="#eye"/></svg></button></div></div>
 <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:.5rem">注册</button>
 <p style="margin-top:.8rem;font-size:.78rem;color:#999;text-align:center;line-height:1.5">当前未设置管理员密码，请立即设置管理员密码。可以修改用户名。</p>
 </form></div>`);
@@ -267,8 +282,8 @@ function renderLogin(req, res, config) {
       if (size > MAX_BODY) { h(res, 413, '错误', '<div class="card"><div class="alert alert-error">请求体过大</div></div>'); return; }
       const params = new URLSearchParams(body);
       const username = (params.get('username') || '').trim();
-      const password = params.get('password') || '';
-      const confirm = params.get('confirm') || '';
+  const password = params.get('new_access_pwd') || '';
+  const confirm = params.get('confirm') || '';
 
       const err = !username ? '请输入管理员用户名'
         : username.length < 2 ? '用户名至少2个字符'
@@ -285,8 +300,8 @@ function renderLogin(req, res, config) {
 <div class="alert alert-error">${esc(err)}</div>
 <form method="post">
 <div class="form-group"><label>管理员用户名</label><input name="username" value="${esc(username)}" autofocus></div>
-<div class="form-group"><label>密码（至少6个字符）</label><div class="pwd-wrap"><input type="password" name="password"><button type="button" class="pwd-toggle" onclick="pwdtoggle(this)" aria-label="切换密码显示"><svg><use href="#eye"/></svg></button></div></div>
-<div class="form-group"><label>确认密码</label><div class="pwd-wrap"><input type="password" name="confirm"><button type="button" class="pwd-toggle" onclick="pwdtoggle(this)" aria-label="切换密码显示"><svg><use href="#eye"/></svg></button></div></div>
+<div class="form-group"><label>密码（至少6个字符）</label><div class="pwd-wrap"><input type="password" name="password"><button type="button" class="pwd-toggle" tabindex="-1" onclick="pwdtoggle(this)" aria-label="切换密码显示"><svg><use href="#eye"/></svg></button></div></div>
+<div class="form-group"><label>确认密码</label><div class="pwd-wrap"><input type="password" name="confirm"><button type="button" class="pwd-toggle" tabindex="-1" onclick="pwdtoggle(this)" aria-label="切换密码显示"><svg><use href="#eye"/></svg></button></div></div>
 <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:.5rem">注册</button>
 <p style="margin-top:.8rem;font-size:.78rem;color:#999;text-align:center;line-height:1.5">当前未设置管理员密码，请立即设置管理员密码。可以修改用户名。</p>
 </form></div>`);
@@ -323,7 +338,7 @@ function renderLogin(req, res, config) {
 <p style="text-align:center;color:#888;font-size:.8rem;margin-bottom:1rem;font-style:italic">"领导回来啦～"</p>
 <form method="post">
 <div class="form-group"><label>用户名</label><input name="username" autofocus></div>
-<div class="form-group"><label>密码</label><div class="pwd-wrap"><input type="password" name="password"><button type="button" class="pwd-toggle" onclick="pwdtoggle(this)" aria-label="切换密码显示"><svg><use href="#eye"/></svg></button></div></div>
+<div class="form-group"><label>密码</label><div class="pwd-wrap"><input type="password" name="password"><button type="button" class="pwd-toggle" tabindex="-1" onclick="pwdtoggle(this)" aria-label="切换密码显示"><svg><use href="#eye"/></svg></button></div></div>
 <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:.5rem">登录</button>
 </form></div>`);
   }
@@ -358,7 +373,7 @@ function renderLogin(req, res, config) {
 <div class="alert alert-error">用户名或密码错误</div>
 <form method="post">
 <div class="form-group"><label>用户名</label><input name="username" value="${esc(params.get('username') || '')}" autofocus></div>
-<div class="form-group"><label>密码</label><div class="pwd-wrap"><input type="password" name="password"><button type="button" class="pwd-toggle" onclick="pwdtoggle(this)" aria-label="切换密码显示"><svg><use href="#eye"/></svg></button></div></div>
+<div class="form-group"><label>密码</label><div class="pwd-wrap"><input type="password" name="password"><button type="button" class="pwd-toggle" tabindex="-1" onclick="pwdtoggle(this)" aria-label="切换密码显示"><svg><use href="#eye"/></svg></button></div></div>
 <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:.5rem">登录</button>
 </form></div>`);
     }
@@ -471,7 +486,8 @@ ${er ? `<div style="padding:.3rem .6rem .5rem;background:#fef2f2;font-size:.78re
 </td></tr>`;
 
   h(res, 200, '仪表盘', `${navBar()}
-${successMsg ? `<div class="alert alert-success">${esc(successMsg)}</div>` : ''}
+${editError ? `<div class="alert alert-error">${esc(decodeUrlMsg(editError))}</div>` : ''}
+${successMsg ? `<div class="alert alert-success">${esc(decodeUrlMsg(successMsg))}</div>` : ''}
 <div class="stat">
 <div class="stat-item"><div class="num">${config.routes.length}</div><div class="lbl">路由</div></div>
 <div class="stat-item"><div class="num">${allSessions.length}</div><div class="lbl">活跃会话</div></div>
@@ -554,10 +570,10 @@ async function addRoute(req, res, backend) {
   const rawTarget = (params.get('target') || '').trim();
   const target = rawTarget.includes('://') ? rawTarget : `http://${rawTarget}`;
   if (!host || !rawTarget) {
-    return rd(res, '/_admin?error=' + encodeURIComponent('Host 和目标地址不能为空'));
+    return rd(res, '/_admin?error=host_empty');
   }
   if (config.routes.some(r => r.host === host)) {
-    return rd(res, '/_admin?error=' + encodeURIComponent(`主机名「${host}」已存在，不能重复`));
+    return rd(res, '/_admin?error=host_dup_' + encodeURIComponent(host));
   }
   const ip = req.socket.remoteAddress || '';
   config.routes.push({
@@ -577,7 +593,7 @@ async function editRoute(req, res, backend) {
   const { config } = backend;
 
   if (isNaN(idx) || idx < 0 || idx >= config.routes.length) {
-    return rd(res, '/_admin?error=' + encodeURIComponent('无效索引'));
+    return rd(res, '/_admin?error=index_invalid');
   }
 
   if (req.method === 'GET') {
@@ -590,11 +606,11 @@ async function editRoute(req, res, backend) {
   const rawTarget = (params.get('target') || '').trim();
   const target = rawTarget.includes('://') ? rawTarget : `http://${rawTarget}`;
   if (!host || !rawTarget) {
-    return rd(res, '/_admin?_edit=' + idx + '&error=' + encodeURIComponent('Host 和目标地址不能为空'));
+    return rd(res, '/_admin?_edit=' + idx + '&error=host_empty');
   }
   const dup = config.routes.findIndex((r, i) => r.host === host && i !== idx);
   if (dup !== -1) {
-    return rd(res, '/_admin?_edit=' + idx + '&error=' + encodeURIComponent(`主机名「${host}」已被其他路由使用`));
+    return rd(res, '/_admin?_edit=' + idx + '&error=host_dup_other_' + encodeURIComponent(host));
   }
   const ip = req.socket.remoteAddress || '';
   config.routes[idx] = {
@@ -710,7 +726,7 @@ async function kickSession(req, res, backend) {
       break;
     }
   }
-  rd(res, '/_admin?msg=' + encodeURIComponent(kicked ? '已踢下线' : '未找到该会话'));
+  rd(res, '/_admin?msg=' + (kicked ? 'kicked' : 'not_found'));
 }
 
 function clearSessions(req, res, backend) {
@@ -719,7 +735,7 @@ function clearSessions(req, res, backend) {
   const count = backend.sessions.size;
   backend.sessions.clear();
   audit('SESSION_CLEAR', 'all sessions cleared', ip);
-  rd(res, '/_admin?msg=' + encodeURIComponent(`已清空 ${count} 个会话`));
+  rd(res, '/_admin?msg=cleared_' + count);
 }
 
 async function updateSessionLabel(req, res, backend) {
@@ -763,19 +779,19 @@ ${alert ? `<div class="alert alert-${alert.type}">${esc(alert.text)}</div>` : ''
 <div class="settings-grid">
 <div class="card">
 <h2>修改访问密码</h2>
-<form method="post" action="/_admin/settings/password">
-<div class="form-group"><label>新访问密码</label><div class="pwd-wrap"><input type="password" name="password" required><button type="button" class="pwd-toggle" onclick="pwdtoggle(this)" aria-label="切换密码显示"><svg><use href="#eye"/></svg></button></div></div>
-<div class="form-group"><label>确认新密码</label><div class="pwd-wrap"><input type="password" name="confirm" required><button type="button" class="pwd-toggle" onclick="pwdtoggle(this)" aria-label="切换密码显示"><svg><use href="#eye"/></svg></button></div></div>
+<form method="post" action="/_admin/settings/password" onsubmit="this.querySelectorAll('input[type=password]').forEach(function(i){i.type='text'});return true">
+<div class="form-group"><label>新访问密码</label><div class="pwd-wrap"><input type="text" name="new_access_pwd" class="pwd-mask" autocomplete="off" required><button type="button" class="pwd-toggle" tabindex="-1" onclick="pwdtoggle(this)" aria-label="切换密码显示"><svg><use href="#eye"/></svg></button></div></div>
+<div class="form-group"><label>确认新密码</label><div class="pwd-wrap"><input type="password" name="confirm" required><button type="button" class="pwd-toggle" tabindex="-1" onclick="pwdtoggle(this)" aria-label="切换密码显示"><svg><use href="#eye"/></svg></button></div></div>
 <button class="btn btn-primary">保存</button>
 </form>
 </div>
 <div class="card">
 <h2>修改管理员账号</h2>
-<form method="post" action="/_admin/settings/admin">
-<div class="form-group"><label>当前管理员密码</label><div class="pwd-wrap"><input type="password" name="current" required><button type="button" class="pwd-toggle" onclick="pwdtoggle(this)" aria-label="切换密码显示"><svg><use href="#eye"/></svg></button></div></div>
+<form method="post" action="/_admin/settings/admin" onsubmit="this.querySelectorAll('input[type=password]').forEach(function(i){i.type='text'});return true">
+<div class="form-group"><label>当前管理员密码</label><div class="pwd-wrap"><input type="password" name="current" required><button type="button" class="pwd-toggle" tabindex="-1" onclick="pwdtoggle(this)" aria-label="切换密码显示"><svg><use href="#eye"/></svg></button></div></div>
 <div class="form-group"><label>新用户名</label><input name="username" value="${esc(config.admin_username)}" required></div>
-<div class="form-group"><label>新密码</label><div class="pwd-wrap"><input type="password" name="password" placeholder="留空则不修改"><button type="button" class="pwd-toggle" onclick="pwdtoggle(this)" aria-label="切换密码显示"><svg><use href="#eye"/></svg></button></div></div>
-<div class="form-group"><label>确认新密码</label><div class="pwd-wrap"><input type="password" name="confirm" placeholder="留空则不修改"><button type="button" class="pwd-toggle" onclick="pwdtoggle(this)" aria-label="切换密码显示"><svg><use href="#eye"/></svg></button></div></div>
+<div class="form-group"><label>新密码</label><div class="pwd-wrap"><input type="password" name="password" placeholder="留空则不修改"><button type="button" class="pwd-toggle" tabindex="-1" onclick="pwdtoggle(this)" aria-label="切换密码显示"><svg><use href="#eye"/></svg></button></div></div>
+<div class="form-group"><label>确认新密码</label><div class="pwd-wrap"><input type="password" name="confirm" placeholder="留空则不修改"><button type="button" class="pwd-toggle" tabindex="-1" onclick="pwdtoggle(this)" aria-label="切换密码显示"><svg><use href="#eye"/></svg></button></div></div>
 <button class="btn btn-primary">保存</button>
 </form>
 </div>
