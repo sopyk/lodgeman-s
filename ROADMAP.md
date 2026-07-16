@@ -2,7 +2,7 @@
 
 > 维护约定：
 > - **待办条目**：实现/修复前保留 `- [ ]`，完成后改为 `- [x]` 并补 `实现于` / `修复于` 版本号。
-> - **版本号**取自关于页显示值（当前 `v1.0.3`）。
+> - **版本号**取自关于页显示值（当前 `v1.0.4`）。
 > - **enhancement（功能/改进）**：标注「发现于」版本，完成后补「实现于」版本。
 > - **bug（缺陷）**：标注「发现于」版本，修复后补「修复于」版本。
 
@@ -160,7 +160,8 @@
   - 发现于: v1.0.3
   - 修复于: v1.0.4
   - 修复方案: `auth.js` 访问密码页 `<input name="password">` 改为 `name="access_pwd"`，后端
-    `params.get('access_pwd')` 同步更新；`tests/attack.sh` 和 `tests/stress.sh` 同步字段名
+    `params.get('access_pwd')` 同步更新；登录页改用 `type="text"` + CSS `-webkit-text-security:disc`，
+    Chrome 不识别为密码字段，彻底绕过密码管理器
 
 - [x] Tab 键落在眼睛按钮: 密码框右侧的 `<button>` 在 Tab 键顺序中，Tab 无法跳转到下一输入框
   - 类型: bug
@@ -194,6 +195,12 @@
   - 实现于: v1.0.4
   - 修复方案: 所有「跳转 + 消息」改用英文代码（`?msg=kicked`、`?msg=cleared&count=3`、
     `?error=host_empty` 等），`decodeUrlMsg` 函数在路由处理器中解码回中文
+
+- [x] 设置页密码字段名冲突: 设置页"修改访问密码"表单的"新访问密码"字段使用 `name="password"`，与管理员密码字段同名，Chrome 自动填充混淆
+  - 类型: bug
+  - 发现于: v1.0.3
+  - 修复于: v1.0.4
+  - 修复方案: 改为 `name="new_access_pwd"`，后端同步改为 `params.get('new_access_pwd')`
  
 ---
 
