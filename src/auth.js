@@ -1,162 +1,186 @@
-const config = require('./config.js');
-const { hashPassword, loadConfig } = config;
-const { sessions, saveSessions } = require('./session.js');
-const { rd, h, json } = require('./utils.js');
-const { addAuditLog } = require('./audit.js');
 const crypto = require('crypto');
 
-const MAX_BODY = 1048576;
-
-function readBody(req) {
-  return new Promise((resolve, reject) => {
-    let body = '';
-    let size = 0;
-    req.on('data', (chunk) => {
-      size += chunk.length;
-      if (size > MAX_BODY) {
-        reject(new Error('BODY_TOO_LARGE'));
-        return;
-      }
-      body += chunk;
-    });
-    req.on('end', () => resolve(body));
-    req.on('error', (err) => reject(err));
-  });
-}
+const { verifyPassword } = require('./config.js');
+const { audit } = require('./audit.js');
 
 const DURATIONS = [
-  { value: 900, label: '15 分钟' },
-  { value: 3600, label: '1 小时' },
-  { value: 10800, label: '3 小时' },
-  { value: 43200, label: '12 小时' },
-  { value: 86400, label: '24 小时' },
-  { value: 259200, label: '3 天' },
-  { value: 604800, label: '7 天' },
-  { value: 2592000, label: '30 天' },
-  { value: 31536000, label: '1 年' },
-  { value: 0, label: '永久' },
+  { label: '15 分钟', value: 15 * 60 },
+  { label: '1 小时', value: 3600, def: true },
+  { label: '6 小时', value: 6 * 3600 },
+  { label: '24 小时', value: 24 * 3600 },
+  { label: '7 天', value: 7 * 86400 },
+  { label: '15 天', value: 15 * 86400 },
+  { label: '30 天', value: 30 * 86400 },
+  { label: '永久', value: 365 * 86400 },
 ];
 
-const LOGIN_PAGE = `<!DOCTYPE html><html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>门房大爷 - 请输入访问密码</title><style>
-*{box-sizing:border-box;margin:0;padding:0}body{font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#2d3436;display:flex;min-height:100vh;align-items:center;justify-content:center}
-.login-wrap{background:#fff;border-radius:8px;padding:30px;width:340px;box-shadow:0 4px 20px rgba(0,0,0,.15)}.login-wrap h2{text-align:center;margin-bottom:4px;font-size:18px;display:flex;align-items:center;justify-content:center;gap:6px}
-.login-wrap .sub{text-align:center;font-size:12px;color:#636e72;margin-bottom:16px}.field{margin-bottom:14px}.field label{display:block;font-size:12px;color:#636e72;margin-bottom:3px;font-weight:600}
-.field input{width:100%;padding:8px;border:1px solid #dfe6e9;border-radius:4px;font-size:13px;outline:0}.field input:focus{border-color:#0984e3}.btn{width:100%;padding:8px;background:#0984e3;color:#fff;border:0;border-radius:4px;cursor:pointer;font-size:14px}.btn:hover{opacity:.85}.error{color:#d63031;font-size:13px;text-align:center;margin-bottom:10px}.success{color:#00b894;font-size:13px;text-align:center;margin-bottom:10px}.duration-select{display:flex;gap:6px;flex-wrap:wrap}.duration-select button{flex:1;min-width:60px;padding:4px 2px;font-size:11px;border:1px solid #dfe6e9;border-radius:4px;background:#fff;cursor:pointer;color:#636e72}.duration-select button.active{border-color:#0984e3;background:#0984e3;color:#fff}@media(max-width:480px){.login-wrap{width:90%;margin:10px}}
-.pwd-wrap{position:relative;display:flex;align-items:stretch}.pwd-wrap input{flex:1;padding-right:36px!important}
-.pwd-mask{-webkit-text-security:disc}.pwd-toggle{position:absolute;right:0;top:0;bottom:0;width:32px;border:0;background:0 0;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;color:#636e72;font-size:16px}
-.pwd-toggle:hover{color:#2d3436}
-</style></head><body><div class="login-wrap"><h2>🏠 门房大爷</h2><div class="sub">请输入访问密码</div><div id="err" class="error"></div><div id="msg" class="success"></div><div class="field"><label>访问密码</label><div class="pwd-wrap"><input type="text" class="pwd-mask" id="pwd" name="access_pwd" autocomplete="off" placeholder="输入访问密码"/><button class="pwd-toggle" tabindex="-1" onclick="togglePwd(this)" title="显示/隐藏">👁</button></div></div><div class="field"><label>会话时长</label><div class="duration-select" id="duration-select">
-<button onclick="setDuration(900,this)" class="active">15分</button><button onclick="setDuration(3600,this)">1小时</button><button onclick="setDuration(43200,this)">12小时</button><button onclick="setDuration(86400,this)">1天</button><button onclick="setDuration(604800,this)">7天</button><button onclick="setDuration(2592000,this)">30天</button><button onclick="setDuration(31536000,this)">1年</button><button onclick="setDuration(0,this)">永久</button>
-</div></div><div class="field"><label>备注名（可选）</label><input type="text" id="label" name="label" placeholder="如：办公室电脑" autocomplete="off"/></div><button class="btn" onclick="login()">进入</button></div><script>
-var dur=900;function setDuration(d,btn){dur=d;document.querySelectorAll('.duration-select button').forEach(b=>b.classList.remove('active'));btn.classList.add('active')}
-function togglePwd(btn){const inp=document.getElementById('pwd');if(inp.classList.contains('pwd-mask')){inp.classList.remove('pwd-mask');btn.textContent='🙈'}else{inp.classList.add('pwd-mask');btn.textContent='👁'}}
-function login(){const p=document.getElementById('pwd').value;const l=document.getElementById('label').value.trim();if(!p)return document.getElementById('err').textContent='请输入访问密码';fetch('/login',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({access_pwd:p,duration:dur,label:l}).toString()}).then(r=>{if(r.redirected)location.href=r.url;return r.json()}).then(d=>{if(d.ok)location.reload();else document.getElementById('err').textContent=d.error||'密码错误'}).catch(()=>document.getElementById('err').textContent='请求失败')}
-</script></body></html>`;
+const WORDS = '熊猫,火箭,星辰,清风,明月,青山,绿水,阳光,雨露,白云,大海,森林,草原,沙漠,极光,流星,彩虹,闪电,雪花,春风,梧桐,银杏,琥珀,珊瑚,翡翠,珍珠,琉璃,瑞雪,丰收,启航,远山,近水,书签,灯塔,港湾,原野,苍穹,晨曦,暮色,星河'.split(',');
 
-function genSessionId() {
-  return (
-    crypto.randomBytes(8).toString('hex') +
-    '...' +
-    Date.now().toString(36) +
-    '...' +
-    crypto.randomBytes(4).toString('hex')
-  );
+function randomWord() {
+  return WORDS[Math.floor(Math.random() * WORDS.length)] + WORDS[Math.floor(Math.random() * WORDS.length)] + Math.floor(Math.random() * 100);
 }
 
-function auth(req, res) {
-  if (req.url === '/login' && req.method === 'GET') {
-    return res.end(LOGIN_PAGE);
+const OPTS = DURATIONS.map(d =>
+  `<option value="${d.value}"${d.def ? ' selected' : ''}>${d.label}</option>`
+).join('');
+
+const LOGIN_PAGE = `<!DOCTYPE html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>登录 · 门房大爷</title><link rel="icon" href="/assets/favicon.png">
+<style>
+body{font-family:system-ui;display:flex;justify-content:center;align-items:center;height:100vh;margin:0;background:#f5f5f5}
+form{background:#fff;padding:2rem;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,.1);width:360px}
+h1{margin:0 0 .5rem;font-size:1.2rem;color:#333;text-align:center}
+.desc{margin:0 0 1rem;color:#666;font-size:.85rem;text-align:center}
+input,select{width:100%;padding:.5rem;margin:.25rem 0 .6rem;border:1px solid #ddd;border-radius:4px;box-sizing:border-box;font-size:1rem}
+select{font-size:.9rem;background:#fff;cursor:pointer}
+label{display:flex;align-items:center;gap:.4rem;font-size:.85rem;color:#555;margin-bottom:.25rem;cursor:pointer}
+input[type=checkbox]{width:auto;margin:0}
+.check-row{display:flex;gap:.6rem;margin-bottom:0}
+.check-row>div{flex:1;min-width:0}
+.check-row label{width:fit-content;margin-bottom:0}
+button{width:100%;padding:.6rem;background:#0066ff;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:1rem}
+button:hover{background:#0052cc}
+.error{color:#d32f2f;font-size:.85rem;margin:.5rem 0}
+.logged_out{color:#2e7d32;font-size:.85rem;margin:.5rem 0}
+.hint{color:#888;font-size:.75rem;margin:0 0 .6rem 1.3rem;line-height:1.3}
+.sublabel{font-size:.8rem;color:#555;margin:.2rem 0 0}
+.banner{text-align:center;margin-bottom:1rem}
+.banner img{max-width:100%;height:auto;border-radius:6px}
+.pwd-wrap{position:relative;display:flex;align-items:center}
+.pwd-wrap input{flex:1;padding-right:2rem}
+.pwd-toggle{position:absolute;right:2px;top:1px;bottom:1px;background:none;border:none;cursor:pointer;padding:0;line-height:1;user-select:none;display:flex;align-items:center;justify-content:center;width:28px;height:auto}
+button.pwd-toggle:hover{background:none}
+.pwd-mask{-webkit-text-security:disc}.pwd-toggle svg{width:18px;height:18px;fill:none;stroke:#999;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+.pwd-toggle:hover svg{stroke:#666}
+</style></head>
+<body>
+<form method="post">
+<div class="banner"><img src="/assets/lodgemans-banner.png" alt="门房大爷LodgeManS"></div>
+<h1 style="font-size:1.3rem">门房大爷LodgeManS</h1>
+<p class="desc">统一认证网关</p>
+<p class="desc" style="font-style:italic">"先来登个记～"</p>
+ALERTS
+<div class="pwd-wrap"><input type="text" class="pwd-mask" name="access_pwd" placeholder="密码" autocomplete="off" autofocus><button type="button" class="pwd-toggle" tabindex="-1" onclick="var i=this.previousElementSibling,e=this.querySelector('use');if(i.type==='text'){i.type='password';e.setAttribute('href','#eye-off')}else{i.type='text';e.setAttribute('href','#eye')}" aria-label="切换密码显示"><svg><use href="#eye"/></svg></button></div>
+<svg style="display:none"><symbol id="eye" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></symbol><symbol id="eye-off" viewBox="0 0 24 24"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/><path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"/></symbol></svg>
+<div class="check-row">
+<div><label><input type="checkbox" name="remember" value="1" checked> 保持登录</label></div>
+<div><span style="font-size:.85rem;color:#555">时长 </span><select name="duration" style="width:auto;display:inline-block;padding:.3rem .4rem;font-size:.85rem;margin:0">${OPTS}</select></div>
+</div>
+<div id="hint" class="hint">建议仅在私人设备上勾选。公共设备请勿勾选。</div>
+<div style="margin:.5rem 0 .75rem">
+<label style="margin-bottom:.2rem;font-size:.82rem">备注名 <input name="label" id="labelInput" placeholder="给自己一个标记，方便后台识别这个登录" style="font-size:.85rem;padding:.4rem .5rem;margin:0"></label>
+<div style="color:#888;font-size:.72rem;margin-top:.15rem">方便你在管理后台识别不同的登录，建议填个有意义的词</div>
+</div>
+<button type="submit">登录</button>
+</form>
+<script>
+var w = ['${WORDS.join("','")}'];
+document.getElementById('labelInput').value = w[Math.floor(Math.random()*w.length)] + w[Math.floor(Math.random()*w.length)] + Math.floor(Math.random()*100);
+</script>
+</body></html>`;
+
+function getIp(req) {
+  return req.socket.remoteAddress || 'unknown';
+}
+
+function handleAuth(req, res, backend) {
+  const { config, sessions } = backend;
+  const ip = getIp(req);
+
+  if (!config.password) {
+    const page = LOGIN_PAGE
+      .replace('<form method="post">', '<div>')
+      .replace('ALERTS', '<div class="error" style="margin-bottom:1.5rem;line-height:1.6;text-align:center;font-size:.9rem;padding:.5rem 0">未设置访问密码，无法访问网页，请联系管理员<a href="/_admin/login" style="color:#0066ff;text-decoration:underline">设置</a>访问密码</div>')
+      .replace(/<input[\s\S]*?<\/form>/, '');
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+    res.end(page);
+    return;
   }
 
-  if (req.url === '/login' && req.method === 'POST') {
-    return handleLogin(req, res);
-  }
+  const MAX_BODY = 1048576;
 
-  const conf = loadConfig();
-  if (!conf.password) {
-    return rd(res, '/_admin/login');
-  }
-
-  const cookies = (req.headers.cookie || '').split(';').map((c) => c.trim());
-  let sessionId = null;
-  for (const c of cookies) {
-    if (c.startsWith('auth_session=')) {
-      sessionId = c.slice('auth_session='.length);
-      break;
-    }
-  }
-  if (sessionId && sessions.has(sessionId)) {
-    const session = sessions.get(sessionId);
-    if (session.expiresAt !== 0 && Date.now() > session.expiresAt) {
-      sessions.delete(sessionId);
-      saveSessions();
-    } else {
-      return null;
-    }
-  }
-
-  const urlObj = new URL(req.url, 'http://localhost');
-  const exemptPaths = ['/login', '/_admin', '/assets/', '/favicon.ico'];
-  for (const p of exemptPaths) {
-    if (req.url.startsWith(p)) return null;
-  }
-
-  const targetHost = req.headers.host || '';
-  const route = (conf.routes || []).find((r) => targetHost.includes(r.host));
-  if (route && route.auth === false) return null;
-
-  if (route) {
-    const pathExempt = (route.auth_exempt || []).some((pattern) => {
-      if (pattern.endsWith('/*')) {
-        return urlObj.pathname.startsWith(pattern.slice(0, -1));
+  if (req.method === 'POST') {
+    let body = '';
+    let size = 0;
+    req.on('data', c => { body += c; size += c.length; });
+    req.on('end', () => {
+      if (size > MAX_BODY) {
+        res.writeHead(413, { 'Content-Type': 'text/plain; charset=utf-8' });
+        res.end('Payload too large');
+        return;
       }
-      return urlObj.pathname === pattern;
+      const params = new URLSearchParams(body);
+      if (verifyPassword(params.get('access_pwd') || '', config.password)) {
+        audit('LOGIN_OK', 'user login', ip);
+
+        const remember = params.get('remember') === '1';
+        let dur = parseInt(params.get('duration') || '3600', 10);
+        if (!DURATIONS.some(d => d.value === dur)) dur = 3600;
+        const durMs = dur * 1000;
+        const id = crypto.randomBytes(32).toString('hex');
+        const now = Date.now();
+        const expiresAt = now + durMs;
+
+        sessions.set(id, {
+          username: 'user',
+          createdAt: now,
+          expiresAt,
+          userAgent: req.headers['user-agent'] || '',
+          ip,
+          host: req.headers['host'] || '',
+          label: (params.get('label') || '').trim() || '',
+          duration: dur,
+        });
+
+        const cookieOpts = [
+          `auth_session=${id}`,
+          'HttpOnly', 'SameSite=Lax', 'Path=/',
+          remember ? `Max-Age=${dur}` : '',
+        ].filter(Boolean);
+
+        res.writeHead(302, { 'Location': '/', 'Set-Cookie': cookieOpts.join('; ') });
+        res.end();
+      } else {
+        audit('LOGIN_FAIL', '', ip);
+        const page = LOGIN_PAGE.replace('ALERTS', '<div class="error">密码错误</div>');
+        res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+        res.end(page);
+      }
     });
-    if (pathExempt) return null;
+    return;
   }
 
-  rd(res, '/login');
+  const isLogout = req.url.includes('logged_out');
+  const alerts = isLogout
+    ? '<div class="logged_out">已退出登录</div>'
+    : '';
+  const page = LOGIN_PAGE.replace('ALERTS', alerts);
+  res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+  res.end(page);
 }
 
-async function handleLogin(req, res) {
-  const body = await readBody(req);
-  const params = new URLSearchParams(body);
-  const conf = loadConfig();
-  const pwd = params.get('access_pwd') || '';
-  let dur = parseInt(params.get('duration')) || 3600;
-  const label = (params.get('label') || '').trim();
-
-  if (!DURATIONS.some((d) => d.value === dur)) dur = 3600;
-
-  if (!conf.password) {
-    return json(res, { ok: false, error: '未设置访问密码' });
+function parseCookies(req) {
+  const c = {};
+  if (req.headers.cookie) {
+    req.headers.cookie.split(';').forEach(kv => {
+      const [k, ...v] = kv.trim().split('=');
+      c[k] = v.join('=');
+    });
   }
-
-  if (hashPassword(pwd, conf.password) !== conf.password) {
-    return json(res, { ok: false, error: '密码错误' });
-  }
-
-  const sid = genSessionId();
-  const expiresAt = dur === 0 ? 0 : Date.now() + dur * 1000;
-  const ua = req.headers['user-agent'] || '';
-  const ip = req.headers['x-forwarded-for']
-    ? req.headers['x-forwarded-for'].split(',')[0].trim()
-    : req.socket.remoteAddress || '';
-  sessions.set(sid, {
-    createdAt: Date.now(),
-    expiresAt,
-    label: label || undefined,
-    ua,
-    ip,
-  });
-  saveSessions();
-  const maxAge = dur === 0 ? 365 * 86400 : dur;
-  res.setHeader(
-    'Set-Cookie',
-    `auth_session=${sid}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}`
-  );
-  addAuditLog('login', `用户登录 (${label || '无备注'})`);
-  json(res, { ok: true });
+  return c;
 }
 
-module.exports = { auth, handleLogin, LOGIN_PAGE };
+function getSession(req, sessions) {
+  const c = parseCookies(req);
+  const id = c['auth_session'];
+  if (!id) return null;
+  const s = sessions.get(id);
+  if (!s || s.expiresAt < Date.now()) {
+    if (s) sessions.delete(id);
+    return null;
+  }
+  return { id, ...s };
+}
+
+module.exports = { handleAuth, parseCookies, getSession };

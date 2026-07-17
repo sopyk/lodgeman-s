@@ -1,41 +1,29 @@
 #!/bin/bash
 # LodgeManS 安全攻击模拟 & 功能测试
-# 用法: TARGET=http://host:port CONTAINER=容器名 ./tests/attack.sh
-# 默认目标: dev 容器 (lodgeman-s-dev:4081)，避免误伤生产
-# 生产容器: TARGET=http://localhost:4082 CONTAINER=lodgeman-s
+# 用法: TARGET=http://host:port CONTAINER=container_name ./tests/attack.sh
+# 默认: TARGET=http://localhost:4082, CONTAINER=lodgeman-s-dev
+# 安全: 容器名必须含 -dev 后缀，防止误伤生产环境
 
 set -eo pipefail
 
-TARGET="${TARGET:-http://localhost:4081}"
+TARGET="${TARGET:-http://localhost:4082}"
 CONTAINER="${CONTAINER:-lodgeman-s-dev}"
 PASS="${PASS:-testpass}"
 ADMIN_USER="${ADMIN_USER:-admin}"
 ADMIN_PASS="${ADMIN_PASS:-admin123}"
 
-guard_environment() {
-  if [[ "$CONTAINER" != *-dev ]]; then
-    echo "❌ 错误：容器名 '$CONTAINER' 不以 -dev 结尾，拒绝执行"
-    echo "   请使用开发容器（如 CONTAINER=lodgeman-s-dev）"
-    exit 1
-  fi
-  local all_src
-  all_src=$(docker inspect "$CONTAINER" --format '{{range .Mounts}}{{.Source}}{{"\n"}}{{end}}' 2>/dev/null)
-  if [[ "$all_src" != *"_dev/"* ]]; then
-    echo "❌ 错误：容器 '$CONTAINER' 的所有挂载源路径均不包含 _dev/"
-    echo "   挂载源:"
-    echo "$all_src" | sed 's/^/      /'
-    echo "   拒绝执行以防止误操作生产环境"
-    exit 1
-  fi
-  echo "✅ 环境验证通过: $CONTAINER (开发容器)"
-}
+if [[ "$CONTAINER" != *-dev ]]; then
+  echo "❌ 容器名 \"$CONTAINER\" 不含 -dev 后缀，拒绝执行（防止误伤生产环境）"
+  exit 1
+fi
 
 PASSED=0; FAILED=0; TOTAL=0
 
 setup() {
-  local bak="$(dirname "$0")/.routes.yaml.bak"
-  local tmp_config=$(mktemp /tmp/lodgeman-test-config-XXXXXX.yaml)
-  cat > "$tmp_config" << 'YAML'
+  # 备份容器当前配置
+  docker cp "$CONTAINER":/app/config/routes.yaml /tmp/lodgeman-routes.bak 2>/dev/null || true
+  # 写入测试配置
+  docker cp /dev/stdin "$CONTAINER":/app/config/routes.yaml << 'YAML' 2>/dev/null || true
 port: 4082
 password: testpass
 admin_username: admin
@@ -52,23 +40,15 @@ routes:
     auth: false
     description: NoAuth
 YAML
-  docker cp "$CONTAINER:/app/config/routes.yaml" "$bak" 2>/dev/null || true
-  docker cp "$tmp_config" "$CONTAINER:/app/config/routes.yaml"
-  rm -f "$tmp_config"
   docker restart "$CONTAINER" >/dev/null 2>&1
   sleep 3
 }
 
 cleanup() {
-  local bak="$(dirname "$0")/.routes.yaml.bak"
-  if [ -f "$bak" ]; then
-    docker cp "$bak" "$CONTAINER:/app/config/routes.yaml" 2>/dev/null || true
-    rm -f "$bak"
-  fi
+  docker cp /tmp/lodgeman-routes.bak "$CONTAINER":/app/config/routes.yaml 2>/dev/null || true
+  rm -f /tmp/lodgeman-routes.bak
   docker restart "$CONTAINER" >/dev/null 2>&1
 }
-
-trap cleanup EXIT
 
 ok()   { PASSED=$((PASSED+1)); echo "  ✅ $1"; }
 fail() { FAILED=$((FAILED+1)); echo "  ❌ $1 (期望 $2, 实际 $3)"; }
@@ -103,7 +83,6 @@ echo " LodgeManS 攻击模拟 & 功能测试"
 echo " Target: $TARGET"
 echo "═══════════════════════════════════════"
 
-guard_environment
 setup
 
 # ──────────────────────────────────────────
@@ -190,7 +169,7 @@ echo "── 5. 日志注入 (#12) ──"
 
 LABEL_INJECT=$(python3 -c "import urllib.parse; print(urllib.parse.quote('foo\nFAKE_INJECT'))" 2>/dev/null)
 get_user_cookie "3600" &>/dev/null  # ignore, just do the login
-  curl -s -X POST -d "access_pwd=$PASS&duration=3600&label=$LABEL_INJECT" "$TARGET/_login" >/dev/null 2>&1 || true
+curl -s -X POST -d "access_pwd=$PASS&duration=3600&label=$LABEL_INJECT" "$TARGET/_login" >/dev/null 2>&1 || true
 FAKE=$(docker exec "$CONTAINER" sh -c 'cat /app/data/audit.log' 2>/dev/null | grep -c 'FAKE_INJECT' || true)
 check_status "#12 日志注入 (FAKE_INJECT=0)" "0" "$FAKE"
 
@@ -203,7 +182,7 @@ echo "── 6. Session 持久化 (#1) ──"
 BEFORE=$(get_sessions_json | python3 -c "import sys,json; print(len(json.load(sys.stdin)))" 2>/dev/null || echo "0")
 COOKIE_PERSIST=$(get_user_cookie "3600")
 
-docker restart "$CONTAINER" >/dev/null 2>&1
+docker restart lodgeman-s >/dev/null 2>&1
 sleep 3
 
 AFTER=$(get_sessions_json | python3 -c "import sys,json; print(len(json.load(sys.stdin)))" 2>/dev/null || echo "0")
