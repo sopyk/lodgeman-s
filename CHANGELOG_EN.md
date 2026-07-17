@@ -2,6 +2,31 @@
 
 # Changelog
 
+## 1.0.5 (2026-07-16)
+
+> **Note**: This section consolidates all changes from 1.0.3 through 1.0.5 (including improvements originally intended for 1.0.4). The intermediate 1.0.4 release has been deprecated — see note below.
+
+### Fixes
+
+- **Registration and password change broken**: Fixed field-name mismatch between forms and backend `params.get()` in `admin.js`; admin first-time registration and settings-page access-password change now work
+- **Settings access-password form auto-fill**: The confirm field now uses `type=text` + pwd-mask + non-standard field name, fully preventing the browser from cross-form auto-filling saved admin credentials
+- **Password display**: Login password fields use `type=text` + CSS `-webkit-text-security:disc`, so no blue auto-fill dots appear; settings forms convert password fields to plain text before submit to avoid the browser saving plaintext password history
+- **Message encoding hardening**: Error/success messages use short-key encoding with decode-on-render, avoiding encoding issues from Chinese text directly in URL params
+
+### Improvements
+
+- **Password toggle buttons**: All password toggle buttons get `tabindex="-1"` to keep Tab navigation from stopping on the show/hide icon
+- **`attack.sh` test script**: Only runs when the container name contains `-dev` suffix (prevents hitting production); uses `docker cp` instead of `docker exec` to write config
+- **Proxy test**: Fixed `proxy.test.js` failures caused by missing methods on the mock object
+
+---
+
+## ⚠️ 1.0.4 Deprecated
+
+**v1.0.4 has been deprecated due to unintentionally introduced crashing bugs.** We apologize to anyone affected by this release. This release is no longer available for download or use; its changes were merged and corrected into 1.0.5. All users should upgrade directly to 1.0.5.
+
+---
+
 ## 1.0.3 (2026-07-15)
 
 ### Security

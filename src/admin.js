@@ -781,7 +781,7 @@ ${alert ? `<div class="alert alert-${alert.type}">${esc(alert.text)}</div>` : ''
 <h2>修改访问密码</h2>
 <form method="post" action="/_admin/settings/password" onsubmit="this.querySelectorAll('input[type=password]').forEach(function(i){i.type='text'});return true">
 <div class="form-group"><label>新访问密码</label><div class="pwd-wrap"><input type="text" name="new_access_pwd" class="pwd-mask" autocomplete="off" required><button type="button" class="pwd-toggle" tabindex="-1" onclick="pwdtoggle(this)" aria-label="切换密码显示"><svg><use href="#eye"/></svg></button></div></div>
-<div class="form-group"><label>确认新密码</label><div class="pwd-wrap"><input type="password" name="confirm" required><button type="button" class="pwd-toggle" tabindex="-1" onclick="pwdtoggle(this)" aria-label="切换密码显示"><svg><use href="#eye"/></svg></button></div></div>
+<div class="form-group"><label>确认新密码</label><div class="pwd-wrap"><input type="text" class="pwd-mask" autocomplete="off" name="access_confirm" required><button type="button" class="pwd-toggle" tabindex="-1" onclick="pwdtoggle(this)" aria-label="切换密码显示"><svg><use href="#eye"/></svg></button></div></div>
 <button class="btn btn-primary">保存</button>
 </form>
 </div>
@@ -810,7 +810,7 @@ async function changePassword(req, res, backend) {
   const params = new URLSearchParams(body);
   const { config } = backend;
   const password = params.get('new_access_pwd') || '';
-  const confirm = params.get('confirm') || '';
+  const confirm = params.get('access_confirm') || '';
   const ip = req.socket.remoteAddress || '';
   if (password.length < 6) {
     return renderSettings(req, res, backend, { type: 'error', text: '密码至少 6 位' });
