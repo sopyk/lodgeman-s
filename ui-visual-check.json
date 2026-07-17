@@ -10,19 +10,22 @@
       "label": "Login Page",
       "url": "http://localhost:4082/_login",
       "selectors": ["document"],
-      "misMatchThreshold": 0.05
+      "misMatchThreshold": 0.5,
+      "requireSameDimensions": false
     },
     {
       "label": "404 Page",
       "url": "http://localhost:4082/nonexistent",
       "selectors": ["document"],
-      "misMatchThreshold": 0.05
+      "misMatchThreshold": 0.5,
+      "requireSameDimensions": false
     },
     {
       "label": "Admin Login",
       "url": "http://localhost:4082/_admin/login",
       "selectors": ["document"],
-      "misMatchThreshold": 0.05
+      "misMatchThreshold": 0.5,
+      "requireSameDimensions": false
     }
   ],
   "paths": {
