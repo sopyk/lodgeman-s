@@ -26,7 +26,9 @@ function proxyRequest(req, res, route) {
   });
 
   proxyReq.on('timeout', () => {
-    proxyReq.destroy(new Error('Proxy timeout'));
+    // 不 destroy：SSE 长连接可能因 HTTP/2 流控短暂空闲
+    // destroy 会切断 SSE 流，导致前端 60s 心跳超时后全页刷新
+    console.warn(`[proxy] idle ${TIMEOUT}ms for ${req.url} (not destroying — SSE compatible)`);
   });
   proxyReq.on('error', err => {
     if (!res.headersSent) {

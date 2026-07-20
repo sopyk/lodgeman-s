@@ -172,3 +172,24 @@
   - 描述: 之前 `docker/Dockerfile` 将 `src/` 复制到镜像内，修改代码需 `docker compose build` + restart，
     构建过程因网络问题容易超时失败。
   - 实现方案: `docker/compose.yaml` volumes 增加 `- ../src:/app/src`
+
+---
+
+## 待修复 Bug (Pending)
+
+- [ ] `#13` 代理超时切断 SSE 长连接: Cloudflare Tunnel HTTP/2 流控导致门房 10s 超时误杀 SSE
+  - 类型: bug
+  - 发现于: v1.0.5
+  - 修复于: (待定)
+  - 描述: 门房 `proxy.js` 的 `TIMEOUT = 10000`（10秒空闲超时）在超时后调用 `proxyReq.destroy()`
+    切断连接。当后端为 SSE (Server-Sent Events) 长连接时，Cloudflare Tunnel 的 HTTP/2 流控
+    （flow control）可能使门房到后端的 socket 短暂空闲，触发超时 destroy，SSE 断连。
+    前端 OpenCodeUI 的 60s 心跳看门狗发现无事件后触发重连，导致应用重新初始化，
+    用户看到"页面全白再刷新"的现象，对话位置回退到最新消息。
+  - 触发条件: 浏览器通过 Cloudflare Tunnel 访问经由门房代理的 SSE 端点时，
+    Cloudflare 的 HTTP/2 流控间歇性暂停读取 → 隧道停止读取 → 门房 socket 空闲 10s →
+    超时 destroy → SSE 断连 → 前端 60s 后心跳超时 → 应用重置。
+  - 修复方案: `proxy.js:28-30` 将 `timeout` 事件处理器从 `proxyReq.destroy()` 改为仅 `console.warn`
+    日志记录，不销毁连接。正常 HTTP 请求响应快不会触发 timeout；SSE 连接即使短暂空闲
+    也只是等待流控恢复，连接本身未死。去掉 destroy 后连接会自然存活，下一个心跳到达后
+    重置 socket 定时器。
