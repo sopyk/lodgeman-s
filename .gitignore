@@ -2,7 +2,5 @@ node_modules/
 *.log
 .env
 .DS_Store
-config/routes.yaml
+config/routes.prod.yaml
 data/
-backstop_data/
-_dev/

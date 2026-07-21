@@ -10,8 +10,6 @@ RUN npm install --omit=dev && npm cache clean --force
 
 COPY src/ ./src/
 COPY assets/ ./assets/
-COPY scripts/ ./scripts/
-COPY package.json ./
 
 RUN mkdir -p /app/data
 

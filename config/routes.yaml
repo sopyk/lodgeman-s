@@ -1,0 +1,25 @@
+port: 4082
+password: "your-password-here"
+admin_username: admin
+admin_password: ""
+session_max_age: 2592000
+# 目标仅支持 HTTP 协议（http://），不支持其他协议
+routes:
+  - host: opencode.example.com
+    target: http://127.0.0.1:4097
+    auth: true
+    auth_exempt:
+      - /api/*
+      - /health
+    description: OpenCode AI Editor
+  - host: webui.example.com
+    target: http://127.0.0.1:8080
+    auth: true
+    auth_exempt:
+      - /api/*
+      - /ws
+    description: Open WebUI
+  - host: docs.example.com
+    target: http://127.0.0.1:8090
+    auth: false
+    description: 文档知识库

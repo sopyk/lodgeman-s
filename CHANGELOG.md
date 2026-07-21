@@ -2,6 +2,18 @@
 
 # 更新日志
 
+## 1.0.6 (2026-07-21)
+
+### 修复
+
+- **代理超时切断 SSE 长连接**：门房 `proxy.js` 的 10 秒空闲超时（`TIMEOUT = 10000`）在超时后调用 `proxyReq.destroy()` 切断连接。当后端为 SSE (Server-Sent Events) 长连接时，Cloudflare Tunnel 的 HTTP/2 流控（flow control）可能使门房到后端的 socket 短暂空闲，触发超时 destroy，导致 SSE 断连。前端 60s 心跳看门狗发现无事件后触发重连，应用重新初始化，用户看到"页面全白再刷新"，对话位置回退到最新消息。
+  - 修复方案：`proxy.js:28-30` 将 `timeout` 事件处理器从 `proxyReq.destroy()` 改为仅 `console.warn` 日志记录，不销毁连接。正常 HTTP 请求响应快不会触发 timeout；SSE 连接即使短暂空闲也只是等待流控恢复，连接本身未死。去掉 destroy 后连接会自然存活，下一个心跳到达后重置 socket 定时器。
+
+### 改进
+
+- **Docker 镜像精简**：移除容器内不需要的 `scripts/` 目录（开发工具）和重复的 `COPY package.json`，镜像更小更干净
+- **配置模板规范化**：`config/routes.yaml` 改为公共模板文件随库发布，私人配置更名为 `config/routes.prod.yaml` 并排除在版本控制外，克隆即可使用
+
 ## 1.0.5 (2026-07-16)
 
 > **说明**：本节汇总从 1.0.3 到 1.0.5 的全部变更（含 1.0.4 本应包含的改进）。中间的 1.0.4 版本因引入过多错误已作废，详见下方说明。
