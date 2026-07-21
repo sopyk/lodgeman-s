@@ -4,3 +4,4 @@ node_modules/
 .DS_Store
 config/routes.prod.yaml
 data/
+backstop_data/
