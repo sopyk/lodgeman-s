@@ -2,6 +2,18 @@
 
 # Changelog
 
+## 1.0.6 (2026-07-21)
+
+### Fixes
+
+- **Proxy timeout killing SSE connections**: The 10-second idle timeout (`TIMEOUT = 10000`) in `proxy.js` called `proxyReq.destroy()` on timeout. For SSE (Server-Sent Events) long connections behind Cloudflare Tunnel's HTTP/2 flow control, the socket could briefly go idle, triggering the timeout destroy and disconnecting SSE. The frontend's 60s heartbeat watchdog detected no events and triggered a reconnect, causing the app to re-initialize — users saw a white screen flash and the conversation rolled back to the latest message.
+  - Fix: Changed the `timeout` event handler in `proxy.js:28-30` from `proxyReq.destroy()` to a `console.warn` log only, without destroying the connection. Normal HTTP requests complete quickly before the timeout fires; SSE connections simply wait for flow control to resume. Without destroy, the connection stays alive and the next heartbeat resets the socket timer.
+
+### Improvements
+
+- **Leaner Docker image**: Removed the `scripts/` directory (dev tooling) and duplicate `COPY package.json` from the Dockerfile — smaller, cleaner image
+- **Config template normalization**: `config/routes.yaml` is now a public template shipped with the repo; private configuration renamed to `config/routes.prod.yaml` and excluded from version control
+
 ## 1.0.5 (2026-07-16)
 
 > **Note**: This section consolidates all changes from 1.0.3 through 1.0.5 (including improvements originally intended for 1.0.4). The intermediate 1.0.4 release has been deprecated — see note below.
