@@ -295,6 +295,63 @@ describe('proxy.js — proxyRequest header sanitization', () => {
 });
 
 // ---------------------------------------------------------------------------
+// proxyRequest — SSE heartbeat injection
+// ---------------------------------------------------------------------------
+
+describe('proxy.js — SSE heartbeat injection', () => {
+  let backend;
+  let proxy;
+
+  afterEach(() => {
+    if (proxy) proxy.close();
+    if (backend) backend.close();
+  });
+
+  it('injects :keepalive heartbeat when upstream is idle for 20+ seconds', async () => {
+    const { proxyRequest } = require('../src/proxy.js');
+
+    // SSE backend: sends one event then goes silent for 40 seconds
+    backend = await new Promise((resolve) => {
+      const srv = http.createServer((_req, res) => {
+        res.writeHead(200, { 'Content-Type': 'text/event-stream' });
+        res.write('data: first\n\n');
+        // Don't end — let the heartbeat timer fire at least once
+      });
+      srv.listen(0, '127.0.0.1', () => resolve(srv));
+    });
+
+    const bUrl = `http://127.0.0.1:${backend.address().port}`;
+    const p = await startProxy(proxyRequest, { target: bUrl, auth: false });
+    proxy = p.server;
+    const proxyUrl = p.url;
+
+    // Read with a 40-second timeout (long enough for heartbeat — timer fires every 10s)
+    const result = await new Promise((resolve, reject) => {
+      const chunks = [];
+      const req = http.get(proxyUrl + '/', (res) => {
+        res.on('data', (c) => chunks.push(c));
+        res.on('end', () => {
+          resolve({ body: Buffer.concat(chunks).toString() });
+        });
+        res.on('error', reject);
+      });
+      req.on('error', reject);
+      // After 40 seconds, close and check
+      setTimeout(() => {
+        req.destroy();
+        resolve({ body: Buffer.concat(chunks).toString() });
+      }, 40000);
+    });
+
+    const hbCount = (result.body.match(/:keepalive/g) || []).length;
+    assert.ok(hbCount >= 1,
+      `expected at least 1 heartbeat, got ${hbCount}`);
+    assert.ok(result.body.includes('data: first'),
+      'original upstream data must be preserved');
+  });
+});
+
+// ---------------------------------------------------------------------------
 // proxyUpgrade — header sanitization in 101 Switching Protocols
 // ---------------------------------------------------------------------------
 

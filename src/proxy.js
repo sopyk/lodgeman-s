@@ -1,4 +1,5 @@
 const http = require('http');
+const { Transform } = require('stream');
 
 const TIMEOUT = 10000;
 
@@ -36,7 +37,46 @@ function proxyRequest(req, res, route) {
     }
     res.shouldKeepAlive = false;
     res.writeHead(proxyRes.statusCode, headers);
-    proxyRes.pipe(res);
+
+    // SSE 心跳注入：对 text/event-stream 长连接，上游 20 秒无数据时
+    // 门房自行写入注释行，防止 Cloudflare edge / 运营商 NAT 因空闲超时取消流。
+    // 前端 EventSource 忽略以 ':' 开头的注释行，完全无感。
+    // 使用 Transform 流注入（而非直接 res.write），避免与 pipe 竞争。
+    const contentType = (proxyRes.headers['content-type'] || '').toLowerCase();
+    if (contentType.includes('text/event-stream')) {
+      let lastData = Date.now();
+
+      const heartbeat = new Transform({
+        transform(chunk, encoding, callback) {
+          lastData = Date.now();
+          callback(null, chunk);
+        },
+      });
+
+      const cleanup = () => {
+        clearInterval(keepaliveTimer);
+        proxyRes.unpipe(heartbeat);
+        heartbeat.destroy();
+      };
+
+      const keepaliveTimer = setInterval(() => {
+        if (heartbeat.destroyed || res.destroyed) {
+          clearInterval(keepaliveTimer);
+          return;
+        }
+        if (Date.now() - lastData >= 20000) {
+          heartbeat.push(':keepalive\n\n');
+        }
+      }, 10000);
+
+      proxyRes.on('end', cleanup);
+      proxyRes.on('error', cleanup);
+      req.on('close', cleanup);
+
+      proxyRes.pipe(heartbeat).pipe(res);
+    } else {
+      proxyRes.pipe(res);
+    }
   });
 
   proxyReq.on('timeout', () => {
