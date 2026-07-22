@@ -170,6 +170,42 @@
     也只是等待流控恢复，连接本身未死。去掉 destroy 后连接会自然存活，下一个心跳到达后
     重置 socket 定时器。
 
+- [x] `#14` 代理响应头泄漏 Keep-Alive 误导 Cloudflare edge 切断 SSE: Node.js http.Server 默认附加
+    `Connection: keep-alive` + `Keep-Alive: timeout=5`，可能误导 Cloudflare edge 对 SSE 长连接
+    应用连接级超时管理而中途取消流
+  - 类型: bug
+  - 发现于: v1.0.6
+  - 修复于: v1.0.6.post1
+  - 描述: 门房（lodgeman-s）通过 Node.js http.Server 直连 cloudflared（而非像 Caddy 那样自动剥离
+    响应头），`http.Server` 默认给每个 HTTP 响应附加 `Connection: keep-alive` + `Keep-Alive: timeout=5`。
+    这两个头到达 Cloudflare edge 后，edge 可能对 SSE 长连接错误地应用连接级超时，在 ~5 分钟时
+    取消流。直连路径（`coded.9997664.xyz`）因经过 Caddy 反向代理（自动剥离这两个头）不受影响。
+  - 触发条件: 浏览器通过门房路线（`code.9997664.xyz`）访问 SSE 端点，Cloudflare edge 收到
+    `Keep-Alive: timeout=5` 后在 ~5 分钟刻度取消上游连接。
+  - 修复方案: `proxy.js:31-38` 用大小写不敏感方式从转发响应头中剔除 `connection` 和 `keep-alive`，
+    同时设置 `res.shouldKeepAlive = false`（仅 `delete` 不够——Node.js `_storeHeader()` 在
+    `shouldKeepAlive === true` 时会重新注入这两个头）。`proxyUpgrade` 的 101 响应同步清洗。
+
+- [x] `#15` SSE 心跳注入: 门房主动注入 keepalive 注释行，防止 Cloudflare edge / 运营商 NAT
+    因空闲超时取消流
+  - 类型: enhancement
+  - 发现于: v1.0.6
+  - 实现于: v1.0.6.post1
+  - 描述: 仅清除 `Keep-Alive` 头不足以彻底解决问题——Cloudflare edge 仍会对 gatehouse 路径的 SSE
+    长连接取消流（`stream canceled by remote with error code 0`）。改用 Transform 流在门房层面
+    注入 `:keepalive\n\n` 注释行：检测到 `Content-Type: text/event-stream` 时，每 10 秒检查一次
+    upstream 数据活跃度，若上游 20 秒无数据则由门房自行写一条注释行。前端 EventSource 忽略
+    `:` 开头行，完全无感。
+  - 触发条件: 任何经门房代理的 SSE 长连接，若上游短暂空闲超过网络层（Cloudflare edge / 运营商 NAT）
+    超时阈值，流被中途取消。
+  - 实现方案:
+    1. `proxy.js:1` 新增 `require('stream').Transform` 导入
+    2. `proxy.js:41-79` 检测 SSE `content-type` 后创建 Transform 流，用 setInterval（10s 间隔）
+       检查上游是否 20s 无数据，是则 `heartbeat.push(':keepalive\\n\\n')`
+    3. cleanup 清除定时器、unpipe、destroy Transform 流（end/error/req.close 时触发）
+    4. `proxyRes.pipe(heartbeat).pipe(res)` 替代直接 `proxyRes.pipe(res)`
+  - 测试: `tests/proxy.test.js` 新增 SSE heartbeat injection 测试套件（40 秒超时验证至少一次心跳注入）
+
 ---
 
 ## 已实现功能 (Done)
