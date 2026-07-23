@@ -2,6 +2,34 @@
 
 # Changelog
 
+## 1.0.7 (2026-07-22)
+
+### Fixes
+
+- **Keep-Alive header leaking into proxied responses misleads Cloudflare edge into canceling SSE streams**
+  - User experience: Accessing the main domain on mobile, the page suddenly goes white and
+    refreshes approximately every 5 minutes, sometimes rolling back to the latest conversation
+    message. The direct path on desktop works perfectly.
+  - Root cause: Node.js http.Server appends `Connection: keep-alive` + `Keep-Alive: timeout=5`
+    to every HTTP response by default. Since lodgeman-s connects directly to cloudflared
+    (unlike Caddy which strips these headers), Cloudflare edge receives them and may apply
+    connection-level timeout management to SSE long connections, canceling the stream at ~5 minutes.
+  - Fix: Strip `connection` and `keep-alive` from forwarded response headers (case-insensitive),
+    and set `res.shouldKeepAlive = false` to prevent Node.js from re-injecting them.
+    Same cleanup applied to WebSocket 101 responses.
+
+### Improvements
+
+- **Gateway-level SSE heartbeat injection to prevent network-layer idle timeout stream cancellations**
+  - User experience: After removing the `Keep-Alive` header, the issue persisted — mobile
+    devices still experienced white-screen refreshes approximately every 5 minutes.
+  - Root cause: Cloudflare edge has its own idle timeout management independent of HTTP
+    response headers; fixing headers alone was insufficient.
+  - Solution: A Transform stream injects `:keepalive\n\n` comment lines at the gateway
+    level. Every 10 seconds, upstream data freshness is checked; if 20 seconds pass without
+    upstream data, the gateway writes a keepalive. Frontend EventSource ignores comment
+    lines — completely transparent.
+
 ## 1.0.6 (2026-07-21)
 
 ### Fixes

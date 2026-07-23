@@ -887,7 +887,7 @@ function renderAbout(req, res, backend) {
 <h1 style="font-size:1.5rem;margin:0 0 .25rem">门房大爷LodgeManS</h1>
 <p style="color:#666;font-size:.85rem;margin:0 0 1.5rem">统一认证网关</p>
 <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.5rem">
-<div class="stat-item"><div class="num">v1.0.6</div><div style="font-size:.8rem;color:#888">当前版本</div></div>
+<div class="stat-item"><div class="num">v1.0.7</div><div style="font-size:.8rem;color:#888">当前版本</div></div>
 <div class="stat-item"><div class="num">MIT</div><div style="font-size:.8rem;color:#888">开源许可</div></div>
 </div>
 <h2 style="font-size:1.05rem;margin:0 0 .5rem">项目信息</h2>

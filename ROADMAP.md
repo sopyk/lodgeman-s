@@ -175,7 +175,7 @@
     应用连接级超时管理而中途取消流
   - 类型: bug
   - 发现于: v1.0.6
-  - 修复于: v1.0.6.post1
+  - 修复于: v1.0.7
   - 描述: 门房（lodgeman-s）通过 Node.js http.Server 直连 cloudflared（而非像 Caddy 那样自动剥离
     响应头），`http.Server` 默认给每个 HTTP 响应附加 `Connection: keep-alive` + `Keep-Alive: timeout=5`。
     这两个头到达 Cloudflare edge 后，edge 可能对 SSE 长连接错误地应用连接级超时，在 ~5 分钟时
@@ -190,7 +190,7 @@
     因空闲超时取消流
   - 类型: enhancement
   - 发现于: v1.0.6
-  - 实现于: v1.0.6.post1
+  - 实现于: v1.0.7
   - 描述: 仅清除 `Keep-Alive` 头不足以彻底解决问题——Cloudflare edge 仍会对 gatehouse 路径的 SSE
     长连接取消流（`stream canceled by remote with error code 0`）。改用 Transform 流在门房层面
     注入 `:keepalive\n\n` 注释行：检测到 `Content-Type: text/event-stream` 时，每 10 秒检查一次

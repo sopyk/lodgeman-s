@@ -2,6 +2,27 @@
 
 # 更新日志
 
+## 1.0.7 (2026-07-22)
+
+### 修复
+
+- **代理响应头泄漏 Keep-Alive 误导 Cloudflare edge 切断 SSE 长连接**
+  - 用户体验：手机上通过主域名访问时，页面每隔约 5 分钟突然全白后刷新，
+    对话位置有时回退到最新消息。电脑上如果用直连路径则完全正常。
+  - 根因：Node.js http.Server 默认给每个 HTTP 响应附加 `Connection: keep-alive` +
+    `Keep-Alive: timeout=5`。门房直连 cloudflared，不似 Caddy 会剥离这两个头，
+    Cloudflare edge 收到后对 SSE 长连接错误应用连接级超时，约 5 分钟时取消流。
+  - 修复：从转发响应头中剔除 `connection` 和 `keep-alive`（大小写不敏感），
+    并设 `res.shouldKeepAlive = false` 阻止 Node.js 重新注入。WebSocket 101 响应同步清洗。
+
+### 改进
+
+- **门房主动注入 SSE 心跳，防止网络层空闲超时切断流**
+  - 用户体验：移除 `Keep-Alive` 头后问题依旧——手机端仍然每隔约 5 分钟全白刷新一次。
+  - 原因：Cloudflare edge 有独立于 HTTP 头的空闲超时管理，仅修响应头不够。
+  - 方案：使用 Transform 流在门房层面注入 `:keepalive\n\n` 注释行。每 10 秒检查上游数据
+    活跃度，上游 20 秒无数据时由门房自行续命。前端 EventSource 忽略 `:` 开头行，完全无感。
+
 ## 1.0.6 (2026-07-21)
 
 ### 修复
