@@ -153,8 +153,16 @@ routes:
   - host: svc2.example.com
     target: http://127.0.0.1:3001
     auth: false                # 免鉴权
+    pass_host: true            # 透传真实域名 Host（同时附加 X-Forwarded-Host/Proto/For）
     description: My Service 2
 ```
+
+> **透传 Host（`pass_host`）**：默认门房转发时后端收到的是目标地址的 IP Host（如 `127.0.0.1:8080`），防止 Host Header Injection。若后端需要读取真实域名——生成绝对 URL、OAuth 回调校验、虚拟主机多站点——在该路由上加 `pass_host: true`，门房将透传原始 `Host` 并附加 `X-Forwarded-Host` / `X-Forwarded-Proto` / `X-Forwarded-For`（沿用 Cloudflare 已透传的 Proto 值）。安全兜底：仅命中路由表的域名才会被转发，未登记域名一律 404。
+>
+> **安全与拓扑注意**：
+> - 透传的是**含端口的原始 Host**。经 Cloudflare/Tunnel 访问时浏览器发的是不带端口的纯域名，正常；若直连 `http://svc.example.com:4082`，后端会收到带 `:4082` 的 Host。
+> - `X-Forwarded-Proto` 沿用上一个反代（如 Cloudflare，或你自己配的 Nginx 等）传入的值。门房自身不终止 TLS，若允许**绕过前置反代直连 4082 端口**，客户端可伪造该头——请确保 `pass_host: true` 的路由只暴露在可信前置反代之后。
+> - `X-Forwarded-For` 末尾追加的是与门房直连的对端；前置反向代理（如 Cloudflare）的 CDN 链在更靠前的位置。
 
 首次启动时，`password` 和 `admin_password` 会自动从明文升级为 scrypt 哈希（不可逆），配置文件会被重写。
 

@@ -58,6 +58,7 @@ tr:last-child td{border-bottom:none}
 .route-host{font-weight:500}
 .route-target{color:#666;font-size:.78rem}
 .route-desc{color:#888;font-size:.78rem}
+.route-exempt{color:#0066ff;font-size:.75rem}
 .empty{text-align:center;color:#aaa;padding:1.5rem;font-size:.85rem}
 .back-link{display:inline-flex;align-items:center;gap:.3rem;color:#666;font-size:.82rem;text-decoration:none;margin-bottom:.75rem}
 .back-link:hover{color:#0066ff}
@@ -393,7 +394,7 @@ function renderDashboard(req, res, backend, editingIdx, editError, successMsg) {
     const pt = parseTarget(r.target);
     if (editingIdx === i) {
       const er = editError; // may have error msg from query param
-      return `<tr><td colspan="5" style="padding:0;border-bottom:2px solid #0066ff">
+      return `<tr><td colspan="6" style="padding:0;border-bottom:2px solid #0066ff">
 <form method="post" action="/_admin/routes/edit/${i}" style="display:flex;flex-wrap:wrap;gap:.5rem;padding:.6rem;background:#f8faff;align-items:end">
 <div style="display:flex;flex-direction:column;gap:.2rem;flex:1;min-width:130px">
 <label style="font-size:.7rem;color:#666">Host</label>
@@ -421,6 +422,11 @@ function renderDashboard(req, res, backend, editingIdx, editError, successMsg) {
 <label style="font-size:.7rem;color:#666">豁免路径</label>
 <input name="auth_exempt" value="${esc((r.auth_exempt || []).join(','))}" placeholder="/api/*,/health" style="padding:.35rem .5rem;border:1px solid #d0d0d0;border-radius:4px;font-size:.82rem;width:100%">
 </div>
+<div style="display:flex;flex-direction:column;gap:.2rem;flex:0 0 130px">
+<label style="font-size:.7rem;color:#666">透传 Host</label>
+<label style="display:flex;align-items:center;gap:.3rem;font-size:.75rem;padding:.3rem .5rem;border:1px solid #d0d0d0;border-radius:4px;background:#fff;cursor:pointer;white-space:nowrap">
+<input type="checkbox" name="pass_host"${r.pass_host ? ' checked' : ''} title="开启后转发真实域名 Host 及 X-Forwarded-*，后端需要读取域名时勾选">域名</label>
+</div>
 <div style="display:flex;gap:.3rem;align-items:end;padding-bottom:.15rem">
 <button class="btn btn-sm btn-primary">保存</button>
 <a href="/_admin" class="btn btn-sm btn-outline" style="text-decoration:none">取消</a>
@@ -432,7 +438,8 @@ ${er ? `<div style="padding:.3rem .6rem .5rem;background:#fef2f2;font-size:.78re
     return `<tr>
 <td><a href="https://${esc(r.host)}" target="_blank" class="route-host" style="color:#0066ff;text-decoration:none">${esc(r.host)}</a></td>
 <td><span class="route-target"><span style="color:#999">http://</span>${esc(pt.addr)}<span style="color:#999">:${pt.port}</span></span></td>
-<td><span class="badge ${r.auth ? 'badge-red' : 'badge-green'}">${r.auth ? '需鉴权' : '免鉴权'}</span></td>
+<td><span class="badge ${r.auth ? 'badge-red' : 'badge-green'}">${r.auth ? '需鉴权' : '免鉴权'}</span>${r.pass_host ? ' <span class="badge badge-green" style="font-size:.65rem" title="透传真实域名 Host + X-Forwarded-*">透传</span>' : ''}</td>
+<td><span class="route-exempt" title="${esc((r.auth_exempt || []).join(', '))}">${(r.auth_exempt || []).length ? esc(r.auth_exempt.join(', ')) : '<span style="color:#bbb">—</span>'}</span></td>
 <td><span class="route-desc">${esc(r.description || '')}</span></td>
 <td><div class="btn-row"><a href="/_admin?_edit=${i}" class="btn btn-sm btn-outline">编辑</a>
 <form method="post" action="/_admin/routes/delete/${i}" style="display:inline" onsubmit="return confirm('确定删除「${esc(r.host)}」?')"><button class="btn btn-sm btn-outline" style="color:#b91c1c">删除</button></form></div></td>
@@ -450,7 +457,7 @@ ${er ? `<div style="padding:.3rem .6rem .5rem;background:#fef2f2;font-size:.78re
 <td>${s._type === 'admin' ? '<span style="color:#999;font-size:.75rem">—</span>' : `<form method="post" action="/_admin/kick" style="display:inline"><input type="hidden" name="sid" value="${s.id}"><button class="btn btn-sm btn-outline">踢下线</button></form>`}</td>
 </tr>`).join('');
 
-  const addRow = `<tr id="addRouteForm" style="display:none"><td colspan="5" style="padding:0;border-bottom:2px solid #0066ff">
+  const addRow = `<tr id="addRouteForm" style="display:none"><td colspan="6" style="padding:0;border-bottom:2px solid #0066ff">
 <form method="post" action="/_admin/routes/add" style="display:flex;flex-wrap:wrap;gap:.5rem;padding:.6rem;background:#f8faff;align-items:end">
 <div style="display:flex;flex-direction:column;gap:.2rem;flex:1;min-width:130px">
 <label style="font-size:.7rem;color:#666">Host</label>
@@ -478,6 +485,11 @@ ${er ? `<div style="padding:.3rem .6rem .5rem;background:#fef2f2;font-size:.78re
 <label style="font-size:.7rem;color:#666">豁免路径</label>
 <input name="auth_exempt" placeholder="/api/*,/health" style="padding:.35rem .5rem;border:1px solid #d0d0d0;border-radius:4px;font-size:.82rem;width:100%">
 </div>
+<div style="display:flex;flex-direction:column;gap:.2rem;flex:0 0 130px">
+<label style="font-size:.7rem;color:#666">透传 Host</label>
+<label style="display:flex;align-items:center;gap:.3rem;font-size:.75rem;padding:.3rem .5rem;border:1px solid #d0d0d0;border-radius:4px;background:#fff;cursor:pointer;white-space:nowrap">
+<input type="checkbox" name="pass_host" title="开启后转发真实域名 Host 及 X-Forwarded-*，后端需要读取域名时勾选">域名</label>
+</div>
 <div style="display:flex;gap:.3rem;align-items:end;padding-bottom:.15rem">
 <button class="btn btn-sm btn-primary">添加</button>
 <button type="button" class="btn btn-sm btn-outline" onclick="toggleAddRoute()">取消</button>
@@ -503,8 +515,8 @@ ${successMsg ? `<div class="alert alert-success">${esc(decodeUrlMsg(successMsg))
 <span id="importStatus" style="font-size:.75rem;color:#888"></span>
 </span>
 </h2>
-<div class="table-wrap"><table><thead><tr><th>Host</th><th>目标</th><th class="auth-col">鉴权</th><th>描述</th><th class="action-col">操作</th></tr></thead><tbody>${routeCards || '<tr><td colspan="5" style="text-align:center;color:#aaa;padding:1.5rem;font-size:.85rem">暂无路由</td></tr>'}
-<tr id="addRouteToggle"><td colspan="5" style="text-align:center;border-bottom:none;padding:.25rem"><button class="btn btn-sm btn-outline" onclick="toggleAddRoute()" style="color:#0066ff">＋ 添加路由</button></td></tr>${addRow}
+<div class="table-wrap"><table><thead><tr><th>Host</th><th>目标</th><th class="auth-col">鉴权</th><th>豁免路径</th><th>描述</th><th class="action-col">操作</th></tr></thead><tbody>${routeCards || '<tr><td colspan="6" style="text-align:center;color:#aaa;padding:1.5rem;font-size:.85rem">暂无路由</td></tr>'}
+<tr id="addRouteToggle"><td colspan="6" style="text-align:center;border-bottom:none;padding:.25rem"><button class="btn btn-sm btn-outline" onclick="toggleAddRoute()" style="color:#0066ff">＋ 添加路由</button></td></tr>${addRow}
 </tbody></table></div>
 <div style="font-size:.72rem;color:#888;padding:.3rem 0 0;line-height:1.5">
 <strong>目标地址说明：</strong><br>
@@ -581,6 +593,7 @@ async function addRoute(req, res, backend) {
     target,
     auth: params.get('auth') !== 'false',
     auth_exempt: (params.get('auth_exempt') || '').split(',').map(s => s.trim()).filter(Boolean),
+    pass_host: params.get('pass_host') === 'on',
     description: params.get('description') || host,
   });
   saveConfig(config);
@@ -618,6 +631,7 @@ async function editRoute(req, res, backend) {
     target,
     auth: params.get('auth') !== 'false',
     auth_exempt: (params.get('auth_exempt') || '').split(',').map(s => s.trim()).filter(Boolean),
+    pass_host: params.get('pass_host') === 'on',
     description: params.get('description') || host,
   };
   saveConfig(config);
@@ -648,6 +662,7 @@ function exportRoutes(req, res, backend) {
     target: r.target,
     auth: r.auth,
     auth_exempt: r.auth_exempt.length > 0 ? r.auth_exempt : undefined,
+    pass_host: r.pass_host === true ? true : undefined,
     description: r.description,
   }))};
   const yamlStr = yaml.dump(doc, { indent: 2, lineWidth: -1 });
@@ -693,6 +708,7 @@ async function importRoutes(req, res, backend) {
         target: r.target,
         auth: r.auth !== false,
         auth_exempt: Array.isArray(r.auth_exempt) ? r.auth_exempt : [],
+        pass_host: r.pass_host === true,
         description: r.description || r.host,
       });
     }

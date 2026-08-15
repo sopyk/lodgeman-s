@@ -3,6 +3,44 @@ const { Transform } = require('stream');
 
 const TIMEOUT = 10000;
 
+/**
+ * 构建转发请求头。
+ * - 总是剔除 connection（避免 keep-alive 语义干扰）
+ * - 清理 auth_session cookie（门房自己的会话，不允许泄漏给后端）
+ * - route.pass_host === true 时透传原始域名 Host，并联动补齐 X-Forwarded-*：
+ *     X-Forwarded-Host  原始域名
+ *     X-Forwarded-Proto 沿用 Cloudflare 已透传的值，缺省按连接是否 TLS 兜底
+ *     X-Forwarded-For   保留既有链路（如 Cloudflare 的客户端 IP），再追加直连对端
+ *   否则维持旧行为：删除 host，由 Node 按 target 重新生成 IP Host。
+ */
+function buildProxyHeaders(req, route) {
+  const headers = { ...req.headers };
+  delete headers['connection'];
+
+  if (route.pass_host) {
+    const clientHost = req.headers['host'] || '';
+    if (clientHost) {
+      headers['host'] = clientHost;
+      headers['x-forwarded-host'] = clientHost;
+    }
+    if (!headers['x-forwarded-proto']) {
+      headers['x-forwarded-proto'] = (req.socket && req.socket.encrypted) ? 'https' : 'http';
+    }
+    const peer = (req.socket && req.socket.remoteAddress) || '';
+    const existing = (headers['x-forwarded-for'] || '').trim();
+    headers['x-forwarded-for'] = existing ? existing + ', ' + peer : peer;
+  } else {
+    delete headers['host'];
+  }
+
+  if (headers['cookie']) {
+    const cookies = headers['cookie'].split('; ').filter(c => !c.startsWith('auth_session='));
+    if (cookies.length) headers['cookie'] = cookies.join('; ');
+    else delete headers['cookie'];
+  }
+  return headers;
+}
+
 function proxyRequest(req, res, route) {
   const url = new URL(route.target);
   const options = {
@@ -10,16 +48,9 @@ function proxyRequest(req, res, route) {
     port: url.port || (url.protocol === 'https:' ? 443 : 80),
     path: req.url,
     method: req.method,
-    headers: { ...req.headers },
+    headers: buildProxyHeaders(req, route),
     timeout: TIMEOUT,
   };
-  delete options.headers['host'];
-  delete options.headers['connection'];
-  if (options.headers['cookie']) {
-    const cookies = options.headers['cookie'].split('; ').filter(c => !c.startsWith('auth_session='));
-    if (cookies.length) options.headers['cookie'] = cookies.join('; ');
-    else delete options.headers['cookie'];
-  }
 
   const proxyReq = http.request(options, proxyRes => {
     // 清洗响应头，剔除 keep-alive 相关字段：
@@ -101,16 +132,9 @@ function proxyUpgrade(req, socket, head, route) {
     port: url.port || 80,
     path: req.url,
     method: 'GET',
-    headers: { ...req.headers },
+    headers: buildProxyHeaders(req, route),
     timeout: TIMEOUT,
   };
-  delete options.headers['host'];
-  delete options.headers['connection'];
-  if (options.headers['cookie']) {
-    const cookies = options.headers['cookie'].split('; ').filter(c => !c.startsWith('auth_session='));
-    if (cookies.length) options.headers['cookie'] = cookies.join('; ');
-    else delete options.headers['cookie'];
-  }
 
   const proxyReq = http.request(options);
   proxyReq.on('upgrade', (proxyRes, proxySocket) => {

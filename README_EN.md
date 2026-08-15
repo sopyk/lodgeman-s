@@ -153,8 +153,16 @@ routes:
   - host: svc2.example.com
     target: http://127.0.0.1:3001
     auth: false                # No auth
+    pass_host: true            # Pass through the real domain Host (adds X-Forwarded-Host/Proto/For)
     description: My Service 2
 ```
+
+> **Host pass-through (`pass_host`)**: By default the backend receives the target's IP Host (e.g. `127.0.0.1:8080`) to prevent Host Header Injection. If a backend needs the real domain — absolute URL generation, OAuth callback validation, virtual hosting — set `pass_host: true` on that route. The proxy will forward the original `Host` and append `X-Forwarded-Host` / `X-Forwarded-Proto` / `X-Forwarded-For` (reusing the Proto value Cloudflare already sent). Safety net: only hosts matching the route table are ever proxied; unregistered domains get a 404.
+>
+> **Security & topology notes**:
+> - The forwarded Host includes any port. Through Cloudflare/Tunnel the browser sends a port-less domain, which is fine; direct access to `http://svc.example.com:4082` will deliver a `:4082`-suffixed Host to the backend.
+> - `X-Forwarded-Proto` reuses whatever the previous proxy (Cloudflare, your own Nginx, etc.) sent. LodgeManS does not terminate TLS itself — allow direct 4082 access from untrusted clients and they can spoof that header. Keep `pass_host: true` routes behind a trusted edge.
+> - `X-Forwarded-For` appends LodgeManS's direct peer last; chains from upstream reverse proxies (e.g. Cloudflare) sit further left.
 
 On first startup, `password` and `admin_password` are automatically upgraded from plaintext to scrypt hash (irreversible), and the config file is rewritten.
 

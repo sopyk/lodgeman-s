@@ -2,7 +2,7 @@
 
 > 维护约定：
 > - **待办条目**：实现/修复前保留 `- [ ]`，完成后改为 `- [x]` 并补 `实现于` / `修复于` 版本号。
-> - **版本号**取自关于页显示值（当前 `v1.0.6`）。
+> - **版本号**取自关于页显示值（当前 `v1.0.7`）。
 > - **enhancement（功能/改进）**：标注「发现于」版本，完成后补「实现于」版本。
 > - **bug（缺陷）**：标注「发现于」版本，修复后补「修复于」版本。
 
@@ -44,6 +44,30 @@
     `return`，执行继续落到 auth 重定向逻辑，再次 `res.writeHead` 触发
     `ERR_HTTP_HEADERS_SENT`，服务 crash 重启，页面白屏。
   - 修复方案: `server.js:62` 的 `res.end(data)` 后加一行 `return;`
+
+- [x] 每路由 `pass_host` 透传选项: 后端需要真实域名时透传 Host 并联动附加 X-Forwarded-*
+  - 类型: enhancement
+  - 发现于: v1.0.7
+  - 实现于: v1.0.8
+  - 描述: `proxy.js` 转发前 `delete options.headers['host']`，后端永远收到目标 IP 的 Host
+    （如 `127.0.0.1:4097`）。依赖域名生成绝对 URL、做 OAuth 回调校验、或按 Host 做虚拟主机
+    的后端会运行异常。
+  - 方案: 每路由新增 `pass_host`（默认 `false` 维持现状）。为 `true` 时转发原始域名 Host，
+    并联动附加 `X-Forwarded-Host` / `X-Forwarded-Proto` / `X-Forwarded-For`（沿用 Cloudflare
+    已透传的 Proto 值）。安全兜底: 仅命中路由表的域名才会被转发，未登记域名一律 404，注入面
+    被路由表封死；`auth_session` cookie 剥离与 `connection` 清理不受影响。管理面板路由表单
+    同步加「透传 Host」复选框，导出/导入同步该字段。
+  - 测试: `tests/proxy.test.js` 覆盖 `pass_host: true` 透传、默认 IP Host（回归保护）、
+    WebSocket 升级透传三条路径。
+
+- [x] 路由列表显示「豁免路径」: 管理面板路由表中看不到已添加路由的 auth_exempt 项
+  - 类型: enhancement
+  - 发现于: v1.0.7
+  - 实现于: v1.0.8
+  - 描述: `admin.js` 路由行只渲染 Host/目标/鉴权/描述，豁免路径只在编辑表单里可见，管理员
+    无法一眼确认哪些路径免鉴权。
+  - 方案: 路由表格新增「豁免路径」列（逗号拼接，空显示 `—`），thead 与各处 `colspan` 同步
+    调整为 6 列；新增 `.route-exempt` 样式。
 
 ---
 

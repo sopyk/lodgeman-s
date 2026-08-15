@@ -11,6 +11,10 @@ routes:
     auth_exempt:
       - /api/*
       - /health
+    # 透传 Host：后端需要读取真实域名（生成绝对 URL / OAuth 回调 / 虚拟主机）时设 true，
+    # 开启后同时追加 X-Forwarded-Host / X-Forwarded-Proto / X-Forwarded-For。
+    # 缺省或 false 时后端收到的是目标 IP 的 Host。
+    # pass_host: true
     description: OpenCode AI Editor
   - host: webui.example.com
     target: http://127.0.0.1:8080

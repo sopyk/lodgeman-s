@@ -2,7 +2,8 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 
-const CONFIG_PATH = path.join(__dirname, '..', 'config', 'routes.yaml');
+// 默认配置路径；可用环境变量 LODGEMAN_CONFIG 覆盖（测试隔离 / 自定义部署）
+const CONFIG_PATH = process.env.LODGEMAN_CONFIG || path.join(__dirname, '..', 'config', 'routes.yaml');
 
 const DEFAULTS = {
   port: 4082,
@@ -78,6 +79,8 @@ function normalizeRoute(r) {
     target: r.target || '',
     auth: r.auth !== false,
     auth_exempt: Array.isArray(r.auth_exempt) ? r.auth_exempt : [],
+    // 透传 Host + X-Forwarded-*：后端需要真实域名时设 true，否则转发 IP Host
+    pass_host: r.pass_host === true,
     description: r.description || '',
   };
 }
@@ -121,6 +124,7 @@ function saveConfig(config) {
         target: r.target,
         auth: r.auth,
         auth_exempt: r.auth_exempt.length > 0 ? r.auth_exempt : undefined,
+        pass_host: r.pass_host === true ? true : undefined,
         description: r.description,
       })),
     };

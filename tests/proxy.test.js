@@ -295,6 +295,131 @@ describe('proxy.js — proxyRequest header sanitization', () => {
 });
 
 // ---------------------------------------------------------------------------
+// proxyRequest — Host pass-through (route.pass_host)
+// ---------------------------------------------------------------------------
+
+describe('proxy.js — Host pass-through (pass_host)', () => {
+  let proxy;
+
+  afterEach(() => {
+    if (proxy) proxy.close();
+  });
+
+  it('forwards original Host + X-Forwarded-* when pass_host is true', async () => {
+    const { proxyRequest } = require('../src/proxy.js');
+    const route = { target: echoUrl, description: 'test', auth: false, pass_host: true };
+
+    const p = await startProxy(proxyRequest, route);
+    proxy = p.server;
+
+    const options = new URL(`${p.url}/test-path?q=1`);
+    const res = await new Promise((resolve, reject) => {
+      http.get({
+        hostname: options.hostname,
+        port: options.port,
+        path: '/test-path?q=1',
+        headers: {
+          'host': 'example.com:4082',
+          'x-forwarded-proto': 'https',
+          'accept': '*/*',
+          'cookie': 'other=keep; auth_session=secret123',
+        },
+      }, (r) => {
+        const chunks = [];
+        r.on('data', (c) => chunks.push(c));
+        r.on('end', () => resolve({
+          headers: { ...r.headers },
+          body: Buffer.concat(chunks).toString(),
+        }));
+        r.on('error', reject);
+      }).on('error', reject);
+    });
+
+    const body = JSON.parse(res.body);
+    // 原始域名（含端口）透传
+    assert.equal(body.headers.host, 'example.com:4082',
+      'backend must receive the original domain Host');
+    assert.equal(body.headers['x-forwarded-host'], 'example.com:4082',
+      'must set X-Forwarded-Host');
+    // Cloudflare 已透传的 proto 值应被沿用
+    assert.equal(body.headers['x-forwarded-proto'], 'https',
+      'must reuse incoming X-Forwarded-Proto');
+    // X-Forwarded-For 需包含直连对端 IP
+    assert.ok(body.headers['x-forwarded-for'] &&
+      body.headers['x-forwarded-for'].includes('127.0.0.1'),
+      'must include proxy peer IP in X-Forwarded-For');
+    // 响应侧反射头同样确认
+    assert.equal(res.headers['x-echo-host'], 'example.com:4082');
+    // auth_session 仍被剥离
+    const cookieHeader = body.headers.cookie || '';
+    assert.equal(cookieHeader.includes('auth_session='), false,
+      'auth_session cookie must still be stripped');
+    assert.equal(cookieHeader.includes('other=keep'), true);
+  });
+
+  it('preserves existing X-Forwarded-For and appends the direct peer', async () => {
+    const { proxyRequest } = require('../src/proxy.js');
+    const route = { target: echoUrl, description: 'test', auth: false, pass_host: true };
+
+    const p = await startProxy(proxyRequest, route);
+    proxy = p.server;
+
+    const options = new URL(`${p.url}/`);
+    const res = await new Promise((resolve, reject) => {
+      http.get({
+        hostname: options.hostname,
+        port: options.port,
+        path: '/',
+        headers: {
+          'host': 'example.com',
+          'x-forwarded-for': '203.0.113.5',
+          'accept': '*/*',
+        },
+      }, (r) => {
+        const chunks = [];
+        r.on('data', (c) => chunks.push(c));
+        r.on('end', () => resolve(Buffer.concat(chunks).toString()));
+        r.on('error', reject);
+      }).on('error', reject);
+    });
+
+    const body = JSON.parse(res);
+    assert.equal(body.headers['x-forwarded-for'], '203.0.113.5, 127.0.0.1',
+      'existing X-Forwarded-For chain must be preserved and the peer appended last');
+  });
+
+  it('forwards IP-based Host when pass_host is false (default)', async () => {
+    const { proxyRequest } = require('../src/proxy.js');
+    const route = { target: echoUrl, description: 'test', auth: false, pass_host: false };
+
+    const p = await startProxy(proxyRequest, route);
+    proxy = p.server;
+
+    const expectedHost = new URL(echoUrl).host; // 127.0.0.1:port
+    const options = new URL(`${p.url}/`);
+    const res = await new Promise((resolve, reject) => {
+      http.get({
+        hostname: options.hostname,
+        port: options.port,
+        path: '/',
+        headers: { 'host': 'example.com:4082', 'accept': '*/*' },
+      }, (r) => {
+        const chunks = [];
+        r.on('data', (c) => chunks.push(c));
+        r.on('end', () => resolve(Buffer.concat(chunks).toString()));
+        r.on('error', reject);
+      }).on('error', reject);
+    });
+
+    const body = JSON.parse(res);
+    assert.equal(body.headers.host, expectedHost,
+      'backend must receive the IP-based Host when pass_host is false');
+    assert.equal(body.headers['x-forwarded-host'], undefined,
+      'no X-Forwarded-Host should be added when pass_host is false');
+  });
+});
+
+// ---------------------------------------------------------------------------
 // proxyRequest — SSE heartbeat injection
 // ---------------------------------------------------------------------------
 
@@ -439,5 +564,59 @@ describe('proxy.js — proxyUpgrade', () => {
     // Keep-Alive must be stripped
     assert.equal(response.toLowerCase().includes('keep-alive'), false,
       'Keep-Alive header must not appear in 101 response');
+  });
+
+  it('passes the original Host through on WebSocket upgrade when pass_host is true', async () => {
+    const { proxyUpgrade } = require('../src/proxy.js');
+
+    // Raw TCP backend that records the inbound request bytes, then 101
+    let received = '';
+    upgradeBackend = await new Promise((resolve) => {
+      const srv = net.createServer((conn) => {
+        conn.once('data', (data) => {
+          received = data.toString();
+          conn.write('HTTP/1.1 101 Switching Protocols\r\n');
+          conn.write('Upgrade: websocket\r\n');
+          conn.write('Connection: Upgrade\r\n');
+          conn.write('Sec-WebSocket-Accept: abc123\r\n');
+          conn.write('\r\n');
+        });
+      });
+      srv.listen(0, '127.0.0.1', () => resolve(srv));
+    });
+
+    const bPort = upgradeBackend.address().port;
+
+    // Proxy with pass_host: true
+    proxy = await new Promise((resolve) => {
+      const srv = http.createServer();
+      srv.on('upgrade', (req, socket, head) => {
+        proxyUpgrade(req, socket, head, {
+          target: `http://127.0.0.1:${bPort}`,
+          auth: false,
+          pass_host: true,
+        });
+      });
+      srv.listen(0, '127.0.0.1', () => resolve(srv));
+    });
+    const pPort = proxy.address().port;
+
+    await new Promise((resolve, reject) => {
+      const client = net.connect(pPort, '127.0.0.1', () => {
+        client.write('GET /ws HTTP/1.1\r\n');
+        client.write('Host: test.com\r\n');
+        client.write('Upgrade: websocket\r\n');
+        client.write('Connection: Upgrade\r\n');
+        client.write('\r\n');
+      });
+      client.on('data', () => { client.end(); resolve(); });
+      client.on('error', reject);
+      setTimeout(() => reject(new Error('timeout waiting for upgrade response')), 3000);
+    });
+
+    assert.ok(received.toLowerCase().includes('\r\nhost: test.com\r\n'),
+      'upstream must receive the original Host on the wire when pass_host is true');
+    assert.ok(received.toLowerCase().includes('x-forwarded-host: test.com'),
+      'must include X-Forwarded-Host on the wire');
   });
 });

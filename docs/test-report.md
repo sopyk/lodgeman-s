@@ -8,9 +8,19 @@
 
 **Node.js**：v22.23.2 · 运行命令：`node --test --test-force-exit tests/*.test.js`
 
+### 期间发现并修复的测试隔离缺陷
+
+首版用例用 `mock.method(fs, ...)` 劫持 `readFileSync`/`writeFileSync` 拦截 `config/routes.yaml`。实测发现 **node:test 默认并发执行 describe 内的 `it`**，两个 saveConfig 用例对全局 fs mock 的「安装/恢复」互相竞争，导致真实 `config/routes.yaml` 被改写为测试夹具内容（对运行配置造成污染）。
+
+修复方案：
+- `src/config.js` 支持 `process.env.LODGEMAN_CONFIG` 覆盖配置路径（默认可选）；
+- `tests/config.test.js` 顶部把 `LODGEMAN_CONFIG` 指向进程专属临时文件，pass_host describe 改为**直接读写临时文件 + `{ concurrency: false }` 串行**，彻底移除全局 fs mock。
+
+修复后连跑多次，真实 `config/routes.yaml` 均保持干净。
+
 ### 新增用例（tests/config.test.js，+1 describe / +6 it）
 
-> `normalizeRoute` 是 `src/config.js` 内部函数，未在 `module.exports` 导出，无法直接 `require` 调用。现有测试风格也只测导出纯函数，因此改为：**mock `fs.readFileSync`/`fs.writeFileSync` 拦截 `config/routes.yaml`**，通过「`saveConfig` → `loadConfig` 闭环」间接覆盖 `normalizeRoute`（`loadConfig` 对每条路由调用它归一化）。全程不触碰真实配置文件。
+> `normalizeRoute` 是 `src/config.js` 内部函数，未在 `module.exports` 导出，无法直接 `require` 调用。现有测试风格也只测导出纯函数，因此改为：通过「`saveConfig` → `loadConfig` 闭环」间接覆盖 `normalizeRoute`（`loadConfig` 对每条路由调用它归一化），配置读写全部落在临时文件上，不触碰真实 `config/routes.yaml`。
 
 | # | 用例 | 验证点 |
 |---|------|--------|
@@ -21,20 +31,19 @@
 | 5 | `saveConfig 仅 true 写入 pass_host 键，false/缺省路由不写` | 3 条路由（true/false/缺省）写出 YAML 中 `pass_host` 只出现 1 次，只挂在 true 路由 |
 | 6 | `saveConfig → loadConfig round-trip 幂等` | 写出后重读：`pass_host: true` 保持 `true`、`false` 保持 `false` |
 
-### 运行结果
+### 运行结果（稳定，多次复跑）
 
 | 模式 | tests | suites | pass | fail |
 |------|-------|--------|------|------|
-| 单跑 `tests/config.test.js` | 37 | 7 | 37 | 0 |
-| 全量（`--test-concurrency=1` 串行，两次） | **95** | **22** | **95** | **0** |
-| 全量（用户原命令，并行） | 91~94（`--test-force-exit` 并行子进程输出聚合截断导致波动，非测试失败） | — | — | 0 |
+| 全量（串行 `--test-concurrency=1`） | **95** | **22** | **95** | **0** |
+| 全量（并行，用户原命令） | **95** | **22** | **95** | **0** |
 
-数字对账：其他 5 个测试文件共 58 个用例，本轮前 config.test.js 31 个用例（58+31=**89**，与存量一致），本轮新增 6 个 → 串行全量 **58+37=95** ✓。
+数字对账：其他 5 个测试文件共 58 个用例，config.test.js 共 37 个用例（31 存量 + 6 新增）→ **58+37=95** ✓。修复隔离缺陷后，并行/串行结果一致，不再出现计数波动。
 
 ### 测试策略说明（为什么不能直接测 normalizeRoute）
 
 1. `module.exports` 仅导出 `loadConfig / matchRoute / isPathExempt / saveConfig / hashPassword / verifyPassword / isHashed / upgradePlaintextConfig`，没有 `normalizeRoute`；
-2. 建议（不属本轮测试范围）：若希望单测 `normalizeRoute` 本身，可在 `src/config.js` 中将其加入 `module.exports`，届时 `config.test.js` 可直接以 `{ host, pass_host }` 为单位断言，无需文件 mock。当前闭环写法已覆盖其全部 `pass_host` 分支。
+2. 建议（不属本轮测试范围）：若希望单测 `normalizeRoute` 本身，可在 `src/config.js` 中将其加入 `module.exports`，届时 `config.test.js` 可直接以 `{ host, pass_host }` 为单位断言，无需文件隔离。当前闭环写法已覆盖其全部 `pass_host` 分支。
 
 ---
 
