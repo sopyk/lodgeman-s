@@ -1,4 +1,44 @@
-# 测试报告 — proxy.js
+# 测试报告
+
+---
+
+## 更新 2026-08-15 — 补充 config.js 的 pass_host round-trip 测试
+
+**背景**：新增「每路由 pass_host 透传选项」后，`tests/proxy.test.js` 已覆盖转发行为；但 `tests/config.test.js` 缺少 `pass_host` 的配置层用例，本次补齐。
+
+**Node.js**：v22.23.2 · 运行命令：`node --test --test-force-exit tests/*.test.js`
+
+### 新增用例（tests/config.test.js，+1 describe / +6 it）
+
+> `normalizeRoute` 是 `src/config.js` 内部函数，未在 `module.exports` 导出，无法直接 `require` 调用。现有测试风格也只测导出纯函数，因此改为：**mock `fs.readFileSync`/`fs.writeFileSync` 拦截 `config/routes.yaml`**，通过「`saveConfig` → `loadConfig` 闭环」间接覆盖 `normalizeRoute`（`loadConfig` 对每条路由调用它归一化）。全程不触碰真实配置文件。
+
+| # | 用例 | 验证点 |
+|---|------|--------|
+| 1 | `normalizeRoute 缺省（无 pass_host 键）→ false` | YAML 无 `pass_host` 键 → 归一化后 `false`，且键始终存在 |
+| 2 | `normalizeRoute pass_host: true → true` | YAML `pass_host: true` → `true` |
+| 3 | `normalizeRoute pass_host: false → false（显式 false）` | 显式 `false` → `false` |
+| 4 | `normalizeRoute 字符串 "true" → false` | 仅严格布尔 `true` 生效（`"true" === true` 为 false） |
+| 5 | `saveConfig 仅 true 写入 pass_host 键，false/缺省路由不写` | 3 条路由（true/false/缺省）写出 YAML 中 `pass_host` 只出现 1 次，只挂在 true 路由 |
+| 6 | `saveConfig → loadConfig round-trip 幂等` | 写出后重读：`pass_host: true` 保持 `true`、`false` 保持 `false` |
+
+### 运行结果
+
+| 模式 | tests | suites | pass | fail |
+|------|-------|--------|------|------|
+| 单跑 `tests/config.test.js` | 37 | 7 | 37 | 0 |
+| 全量（`--test-concurrency=1` 串行，两次） | **95** | **22** | **95** | **0** |
+| 全量（用户原命令，并行） | 91~94（`--test-force-exit` 并行子进程输出聚合截断导致波动，非测试失败） | — | — | 0 |
+
+数字对账：其他 5 个测试文件共 58 个用例，本轮前 config.test.js 31 个用例（58+31=**89**，与存量一致），本轮新增 6 个 → 串行全量 **58+37=95** ✓。
+
+### 测试策略说明（为什么不能直接测 normalizeRoute）
+
+1. `module.exports` 仅导出 `loadConfig / matchRoute / isPathExempt / saveConfig / hashPassword / verifyPassword / isHashed / upgradePlaintextConfig`，没有 `normalizeRoute`；
+2. 建议（不属本轮测试范围）：若希望单测 `normalizeRoute` 本身，可在 `src/config.js` 中将其加入 `module.exports`，届时 `config.test.js` 可直接以 `{ host, pass_host }` 为单位断言，无需文件 mock。当前闭环写法已覆盖其全部 `pass_host` 分支。
+
+---
+
+# 历史报告（2026-07-22）— proxy.js
 
 **日期**：2026-07-22  
 **Node.js**：v22.23.1  

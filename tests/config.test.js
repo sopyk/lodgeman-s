@@ -1,7 +1,8 @@
-const { describe, it, before, after } = require('node:test');
+const { describe, it, before, after, mock } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
 const path = require('path');
+const yaml = require('js-yaml');
 
 // We need to test the config module functions directly
 // Since config.js uses `require('js-yaml')` and reads from a hardcoded path,
@@ -184,5 +185,169 @@ describe('config.js — isJsonReq (via server.js)', () => {
     for (const fn of expected) {
       assert.equal(typeof configModule[fn], 'function', `${fn} should be exported`);
     }
+  });
+});
+
+describe('config.js — pass_host round-trip (loadConfig / normalizeRoute / saveConfig)', () => {
+  // 说明：normalizeRoute 是 src/config.js 的内部函数，未在 module.exports 中导出，
+  // 现有测试风格只能 require 导出的纯函数，无法直接调用 normalizeRoute。
+  // 但 loadConfig 会对每条路由应用 normalizeRoute 归一化，
+  // saveConfig 会按「仅 true 才写 pass_host」序列化回 YAML，
+  // 因此通过「saveConfig → loadConfig」闭环可间接覆盖 normalizeRoute 的全部行为。
+  // 为避免污染真实 config/routes.yaml（参考现有测试不触碰真实文件的原则），
+  // 通过 mock fs.readFileSync / fs.writeFileSync 只拦截该特定文件。
+
+  const FIXTURE_NO_PASS_HOST = `port: 4082
+password: test-password
+admin_username: admin
+admin_password: ""
+session_max_age: 2592000
+routes:
+  - host: plain.example.com
+    target: http://127.0.0.1:9000
+    auth: true
+    description: no pass_host key
+`;
+
+  const FIXTURE_PASS_HOST_TRUE = `port: 4082
+password: test-password
+admin_username: admin
+admin_password: ""
+session_max_age: 2592000
+routes:
+  - host: app.example.com
+    target: http://127.0.0.1:9000
+    auth: true
+    pass_host: true
+    description: passthrough
+`;
+
+  const FIXTURE_PASS_HOST_FALSE = `port: 4082
+password: test-password
+admin_username: admin
+admin_password: ""
+session_max_age: 2592000
+routes:
+  - host: app.example.com
+    target: http://127.0.0.1:9000
+    auth: true
+    pass_host: false
+    description: no passthrough
+`;
+
+  const FIXTURE_PASS_HOST_STRING_TRUE = `port: 4082
+password: test-password
+admin_username: admin
+admin_password: ""
+session_max_age: 2592000
+routes:
+  - host: app.example.com
+    target: http://127.0.0.1:9000
+    auth: true
+    pass_host: "true"
+    description: string true
+`;
+
+  function installConfigFileMocks() {
+    mock.restoreAll(); // 先恢复，避免重复 mock
+    const realReadFileSync = fs.readFileSync;
+    const realWriteFileSync = fs.writeFileSync;
+    let fakeYaml = '';
+    const written = [];
+    mock.method(fs, 'readFileSync', (p, ...args) => {
+      if (typeof p === 'string' && p.includes('routes.yaml')) return fakeYaml;
+      return realReadFileSync.call(fs, p, ...args);
+    });
+    mock.method(fs, 'writeFileSync', (p, text, ...args) => {
+      if (typeof p === 'string' && p.includes('routes.yaml')) written.push(String(text));
+      return realWriteFileSync.call(fs, p, text, ...args);
+    });
+    return {
+      written,
+      setConfigFile(text) { fakeYaml = text; },
+    };
+  }
+
+  function makeConfig(routes) {
+    return {
+      port: 4082,
+      password: 'test-password',
+      admin_username: 'admin',
+      admin_password: '',
+      session_max_age: 2592000,
+      timezone: 'UTC',
+      routes,
+    };
+  }
+
+  after(() => mock.restoreAll());
+
+  it('normalizeRoute 缺省（无 pass_host 键）→ false', () => {
+    const mocks = installConfigFileMocks();
+    mocks.setConfigFile(FIXTURE_NO_PASS_HOST);
+    const cfg = configModule.loadConfig();
+    assert.equal(cfg.routes.length, 1);
+    assert.equal(cfg.routes[0].pass_host, false);
+    // normalizeRoute 归一化后键始终存在，方便后续 saveConfig 读取
+    assert.equal(Object.prototype.hasOwnProperty.call(cfg.routes[0], 'pass_host'), true);
+  });
+
+  it('normalizeRoute pass_host: true → true', () => {
+    const mocks = installConfigFileMocks();
+    mocks.setConfigFile(FIXTURE_PASS_HOST_TRUE);
+    const cfg = configModule.loadConfig();
+    assert.equal(cfg.routes.length, 1);
+    assert.equal(cfg.routes[0].pass_host, true);
+  });
+
+  it('normalizeRoute pass_host: false → false（显式 false）', () => {
+    const mocks = installConfigFileMocks();
+    mocks.setConfigFile(FIXTURE_PASS_HOST_FALSE);
+    const cfg = configModule.loadConfig();
+    assert.equal(cfg.routes.length, 1);
+    assert.equal(cfg.routes[0].pass_host, false);
+  });
+
+  it('normalizeRoute 字符串 "true" → false（仅严格布尔 true 生效）', () => {
+    const mocks = installConfigFileMocks();
+    mocks.setConfigFile(FIXTURE_PASS_HOST_STRING_TRUE);
+    const cfg = configModule.loadConfig();
+    assert.equal(cfg.routes.length, 1);
+    assert.equal(cfg.routes[0].pass_host, false);
+  });
+
+  it('saveConfig 仅 true 写入 pass_host 键，false/缺省路由不写', () => {
+    const mocks = installConfigFileMocks();
+    const cfg = makeConfig([
+      { host: 'pt.example.com', target: 'http://127.0.0.1:9000', auth: true, auth_exempt: [], pass_host: true, description: 'pt' },
+      { host: 'plain.example.com', target: 'http://127.0.0.1:9001', auth: true, auth_exempt: [], pass_host: false, description: 'plain' },
+      { host: 'legacy.example.com', target: 'http://127.0.0.1:9002', auth: false, auth_exempt: [], description: 'legacy no key' },
+    ]);
+    assert.equal(configModule.saveConfig(cfg), true);
+    assert.equal(mocks.written.length, 1);
+    const text = mocks.written[0];
+    // pass_host 应只写出一处（仅 pt.example.com 路由）
+    assert.equal(text.split('pass_host').length - 1, 1, 'pass_host 键应只出现一次');
+    assert.match(text, /pass_host: true/);
+    const parsed = yaml.load(text);
+    assert.equal(parsed.routes.length, 3);
+    assert.equal(parsed.routes[0].pass_host, true);
+    assert.equal(Object.prototype.hasOwnProperty.call(parsed.routes[1], 'pass_host'), false);
+    assert.equal(Object.prototype.hasOwnProperty.call(parsed.routes[2], 'pass_host'), false);
+  });
+
+  it('saveConfig → loadConfig round-trip 幂等：true 保持 true、false 保持 false', () => {
+    const mocks = installConfigFileMocks();
+    const cfg = makeConfig([
+      { host: 'pt.example.com', target: 'http://127.0.0.1:9000', auth: true, auth_exempt: [], pass_host: true, description: 'pt' },
+      { host: 'plain.example.com', target: 'http://127.0.0.1:9001', auth: true, auth_exempt: [], pass_host: false, description: 'plain' },
+    ]);
+    assert.equal(configModule.saveConfig(cfg), true);
+    // 用刚写出的 YAML 重新 loadConfig（等价管理面板「重载配置」）
+    mocks.setConfigFile(mocks.written[0]);
+    const reloaded = configModule.loadConfig();
+    assert.equal(reloaded.routes.length, 2);
+    assert.equal(reloaded.routes[0].pass_host, true);
+    assert.equal(reloaded.routes[1].pass_host, false);
   });
 });
