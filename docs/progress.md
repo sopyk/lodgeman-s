@@ -24,6 +24,8 @@
 ## Phase 3 — 安全加固 [已完成]
 
 - [x] 密码自动哈希（scrypt，启动时自动升级明文密码）
+- [x] Session 持久化（data/sessions.json，实现于 v1.0.3）
+  - 重启后会话保留；服务启动时自动加载，变更时写回
 - [x] CLI 工具（node scripts/hash-password.js <password>）
 - [ ] ~~登录失败锁定~~（用户不要求限制尝试次数）
 - [x] 审计日志（data/audit.log）
@@ -35,7 +37,6 @@
 
 ## Phase 4 — 后续扩展 [待定]
 
-- [ ] 多用户
+- [ ] ~~多用户~~（暂缓：当前单用户 + 单管理员够用）
 - [ ] OAuth/OIDC 登录
-- [ ] Session 持久化（文件/Redis）
 - [ ] 前端页面交互优化

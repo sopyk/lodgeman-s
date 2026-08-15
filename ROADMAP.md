@@ -230,6 +230,22 @@
     4. `proxyRes.pipe(heartbeat).pipe(res)` 替代直接 `proxyRes.pipe(res)`
   - 测试: `tests/proxy.test.js` 新增 SSE heartbeat injection 测试套件（40 秒超时验证至少一次心跳注入）
 
+- [x] 单元测试进程永不退出（`node --test` 挂起）: 测试全部通过但命令不结束，且客户端断开后上游连接一对一泄漏
+  - 类型: bug (资源泄漏 / 可维护性)
+  - 发现于: v1.0.7（引入 `pass_host` 单测 + E2E 初始化时暴露）
+  - 修复于: v1.0.8
+  - 根因:
+    1. `proxy.js` 客户端提前断开时从不终止上游 `proxyReq`，半开 socket/连接永久残留
+    2. `admin.js` 模块级 `setInterval`（管理员会话清理，1h）未 unref，拖住所有 require 它的进程
+    3. SSE 心跳 `setInterval`（10s）未 unref
+  - 修复方案:
+    1. `proxy.js` 监听连接级 `req.socket` 的 `close`，若响应尚未完整发出（res 'finish' 标志）则
+       `proxyReq.destroy()`。注意不可用 `req.on('close')`（请求体读完即触发，会误杀正常转发）、
+       亦不可用 `res.writableEnded/writableFinished`（客户端断开时 Node 会全部置 true）。
+    2. `admin.js` 会话清理定时器 + `proxy.js` SSE 心跳定时器均 `.unref()`
+  - 验证: `npm test` 从「挂起至超时」变为 96 通过 / 43s 干净退出；新增回归测试
+    `proxy.js — upstream cleanup on client disconnect`；E2E 5/5 通过
+
 ---
 
 ## 已实现功能 (Done)

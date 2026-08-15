@@ -5,3 +5,5 @@ node_modules/
 config/routes.prod.yaml
 data/
 backstop_data/
+tests/e2e/.tmp/
+test-results/

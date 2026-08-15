@@ -620,3 +620,51 @@ describe('proxy.js — proxyUpgrade', () => {
       'must include X-Forwarded-Host on the wire');
   });
 });
+
+// ---------------------------------------------------------------------------
+// proxyRequest — upstream cleanup on client disconnect
+// ---------------------------------------------------------------------------
+
+describe('proxy.js — upstream cleanup on client disconnect', () => {
+  let backend;
+  let proxy;
+
+  afterEach(() => {
+    if (proxy) proxy.close();
+    if (backend) backend.close();
+  });
+
+  it('destroys the upstream connection when the client aborts early', async () => {
+    const { proxyRequest } = require('../src/proxy.js');
+
+    // 慢/挂起上游：收到请求后不回包，直到连接被断开
+    let backendSocketClosed = false;
+    backend = await new Promise((resolve) => {
+      const srv = http.createServer((req) => {
+        req.socket.on('close', () => { backendSocketClosed = true; });
+      });
+      srv.listen(0, '127.0.0.1', () => resolve(srv));
+    });
+
+    const p = await startProxy(proxyRequest, {
+      target: `http://127.0.0.1:${backend.address().port}`,
+      auth: false,
+    });
+    proxy = p.server;
+
+    // 发请求后 300ms 客户端直接断开（不等响应，后端不回包也等不到）
+    await new Promise((resolve) => {
+      const req = http.get(p.url + '/slow', () => {});
+      req.on('error', () => {}); // destroy 可能触发 error，忽略
+      setTimeout(() => { req.destroy(); resolve(); }, 300);
+    });
+
+    // 客户端断开后 2s 内，代理应销毁上游连接
+    const deadline = Date.now() + 2000;
+    while (!backendSocketClosed && Date.now() < deadline) {
+      await new Promise(r => setTimeout(r, 50));
+    }
+    assert.equal(backendSocketClosed, true,
+      'upstream socket must be destroyed after the client aborts');
+  });
+});

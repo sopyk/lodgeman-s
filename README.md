@@ -23,8 +23,17 @@
 **方式一：前置反代（推荐）**  
 Nginx / Caddy / Cloudflare Tunnel 监听 80/443，将泛域名流量转发到 `:4082`，访问无需端口号。
 
+> 用 Nginx 时建议补全转发头（Cloudflare / Caddy 默认已设置）：
+> ```nginx
+> proxy_set_header Host $host;
+> proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+> proxy_set_header X-Forwarded-Proto $scheme;   # pass_host 路由时后端才能感知 https
+> ```
+> 并限制 4082 端口仅允许反代回源访问（防火墙/安全组）。
+
 **方式二：DNS + 端口**  
 DNS `*.example.com` 解析到服务器 IP，直接 `http://svc.example.com:4082` 访问（需开放 4082 端口）。
+⚠️ 此方式下 4082 直连公网，需自行评估安全边界：`pass_host: true` 时 `X-Forwarded-Proto` 可被伪造，所有路由的鉴权也依赖单点认证层。
 
 流量到达门房大爷后，在管理面板（`/_admin`）中添加路由规则即可按域名分发到不同后端。
 
@@ -161,7 +170,8 @@ routes:
 >
 > **安全与拓扑注意**：
 > - 透传的是**含端口的原始 Host**。经 Cloudflare/Tunnel 访问时浏览器发的是不带端口的纯域名，正常；若直连 `http://svc.example.com:4082`，后端会收到带 `:4082` 的 Host。
-> - `X-Forwarded-Proto` 沿用上一个反代（如 Cloudflare，或你自己配的 Nginx 等）传入的值。门房自身不终止 TLS，若允许**绕过前置反代直连 4082 端口**，客户端可伪造该头——请确保 `pass_host: true` 的路由只暴露在可信前置反代之后。
+> - `X-Forwarded-Proto` 沿用上一个反代传入的值。**Cloudflare 会自行重写该头**（不存在伪造面）；但 **Nginx/Caddy 默认不设置**，需手动加 `proxy_set_header X-Forwarded-Proto $scheme;`，否则门房按「自身非 TLS」兜底为 `http`，后端拿不到 https 信息。
+> - 门房自身不终止 TLS，**4082 端口必须只在可信前置反代之后可达**（防火墙/安全组只放行反代回源）。若允许绕过反代直连 4082，客户端可伪造 `X-Forwarded-Proto: https`，并可通过路由表 Host 直接打到后端——这会让反代层的全部安全隔离失效。这也是「端口归一化 / 可信上游白名单」等复杂特性不做进代码的原因：正确做法是封死 4082，而不是在门房里兜底。
 > - `X-Forwarded-For` 末尾追加的是与门房直连的对端；前置反向代理（如 Cloudflare）的 CDN 链在更靠前的位置。
 
 首次启动时，`password` 和 `admin_password` 会自动从明文升级为 scrypt 哈希（不可逆），配置文件会被重写。

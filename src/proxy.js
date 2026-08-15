@@ -99,6 +99,8 @@ function proxyRequest(req, res, route) {
           heartbeat.push(':keepalive\n\n');
         }
       }, 10000);
+      // 心跳不应阻止进程退出（仅当 SSE 连接本身存活时才需要它发送）
+      keepaliveTimer.unref();
 
       proxyRes.on('end', cleanup);
       proxyRes.on('error', cleanup);
@@ -119,6 +121,19 @@ function proxyRequest(req, res, route) {
     if (!res.headersSent) {
       res.writeHead(502, { 'Content-Type': 'text/plain' });
       res.end(`Bad Gateway: ${route.description || route.target}`);
+    }
+  });
+
+  // 客户端提前断开时必须终止上游请求，否则连接/半开 socket 会永久残留：
+  // 内存与句柄泄漏，并拖住进程（对 SSE 长连接场景尤为关键）。
+  // 注意：req 的 'close' 事件在请求体读完即触发（并非连接关闭），
+  // 会误伤仍在转发中的正常请求；必须监听连接级 socket 的 'close'，
+  // 并用 res 'finish'（响应完整发完）做完成标志。
+  let responseFinished = false;
+  res.on('finish', () => { responseFinished = true; });
+  req.socket.on('close', () => {
+    if (!responseFinished && !proxyReq.destroyed) {
+      proxyReq.destroy();
     }
   });
 

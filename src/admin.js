@@ -6,12 +6,15 @@ const { audit } = require('./audit.js');
 const adminSessions = new Map();
 const COOKIE_NAME = 'admin_session';
 
+// 管理员会话过期清理。unref：不阻止进程退出（服务运行期由 server 句柄保活，
+// 定时器照常触发；仅在无其他句柄时才让位）。否则 require admin.js 的进程
+// （如 node --test 的子进程）会被这个空转定时器永久拖住。
 setInterval(() => {
   const now = Date.now();
   for (const [id, s] of adminSessions) {
     if (s.expiresAt < now) adminSessions.delete(id);
   }
-}, 3600000);
+}, 3600000).unref();
 
 const CSS = `*{box-sizing:border-box;margin:0}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f0f2f5;color:#1a1a2e}
