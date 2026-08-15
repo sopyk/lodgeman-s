@@ -5,15 +5,22 @@ const path = require('path');
 const os = require('os');
 
 let tmpDir;
-let origPath;
+let origEnv;
 
 before(() => {
   // Save original SESSION_PATH
   tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sess-test-'));
+  // 数据目录重定向到临时目录（import 前设置 env，Docker 运行时同机制）
+  origEnv = process.env.LODGEMAN_DATA;
+  process.env.LODGEMAN_DATA = tmpDir;
+  delete require.cache[require.resolve('../src/session.js')];
 });
 
 after(() => {
   fs.rmSync(tmpDir, { recursive: true, force: true });
+  // 恢复原始 env
+  if (origEnv === undefined) delete process.env.LODGEMAN_DATA;
+  else process.env.LODGEMAN_DATA = origEnv;
 });
 
 describe('session.js — loadSessions / saveSessions', () => {

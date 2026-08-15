@@ -2,6 +2,31 @@
 
 # 更新日志
 
+## 1.1.0-rc.1 (2026-08-15) 【测试版】
+
+> **⚠️ 测试版提醒**：本版本为候选测试版（RC），仅供验收测试，请勿直接用于生产环境。正式版发布后请升级到 1.1.0。
+
+### 新功能
+
+- **每路由 `pass_host` 透传选项**：后端需要真实域名时透传 Host 并联动附加
+  `X-Forwarded-Host` / `X-Forwarded-Proto` / `X-Forwarded-For`。管理面板路由表单新增
+  「透传 Host」复选框，路由表显示「透传」徽标，导出/导入同步该字段。
+- **路由列表显示「豁免路径」列**：管理面板路由表新增一列展示 `auth_exempt` 项
+  （逗号拼接，空显示 `—`），管理员可一眼确认哪些路径免鉴权。
+
+### 修复
+
+- **单元测试进程永不退出（`node --test` 挂起）**：修复客户端断开后上游连接 `proxyReq`
+  未终止的半开 socket 泄漏；`admin.js` 会话清理定时器与 SSE 心跳定时器补充 `.unref()`，
+  测试从「挂起至超时」变为干净退出。
+- **E2E 数据隔离**：`session.js` / `audit.js` 支持 `LODGEMAN_DATA` 环境变量指定数据目录，
+  E2E 测试不再污染真实 `data/`（`sessions.json` / `audit.log`）。
+
+### 改进
+
+- **`.dockerignore` 加固**：追加排除 `_dev/`、`.opencode/`、`test-results/`、`scripts/`、
+  `playwright.config.js`、`ui-visual-check.json`，避免开发残留进入构建上下文。
+
 ## 1.0.7 (2026-07-22)
 
 ### 修复

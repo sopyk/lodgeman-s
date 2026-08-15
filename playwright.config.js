@@ -14,6 +14,8 @@ const PORT = 4090;
 const fixtureDir = path.join(__dirname, 'tests', 'e2e', '.tmp');
 fs.mkdirSync(fixtureDir, { recursive: true });
 const configPath = path.join(fixtureDir, 'routes.e2e.yaml');
+const dataDir = path.join(fixtureDir, 'data');
+fs.mkdirSync(dataDir, { recursive: true });
 
 fs.writeFileSync(configPath, yaml.dump({
   port: PORT,
@@ -39,7 +41,7 @@ module.exports = {
   },
   webServer: {
     command: 'node src/server.js',
-    env: { ...process.env, LODGEMAN_CONFIG: configPath },
+    env: { ...process.env, LODGEMAN_CONFIG: configPath, LODGEMAN_DATA: dataDir },
     port: PORT,
     reuseExistingServer: false,   // 每次运行拉起全新实例，避免复用旧配置
     timeout: 30000,

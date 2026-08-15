@@ -2,6 +2,36 @@
 
 # Changelog
 
+## 1.1.0-rc.1 (2026-08-15) [Release Candidate]
+
+> **⚠️ RC notice**: This is a release candidate for acceptance testing only — do not use it
+> in production yet. Upgrade to 1.1.0 when the stable release is published.
+
+### New Features
+
+- **Per-route `pass_host` passthrough option**: When the backend needs the real domain, pass
+  the original `Host` through and attach `X-Forwarded-Host` / `X-Forwarded-Proto` /
+  `X-Forwarded-For` accordingly. The admin route form gains a "Passthrough Host" checkbox,
+  the route table shows a "passthrough" badge, and export/import carry the field.
+- **"Exempt paths" column in route table**: The admin route table now shows `auth_exempt`
+  entries (comma-joined, `—` when empty) so admins can see which paths skip auth at a glance.
+
+### Fixes
+
+- **Unit test process never exits (`node --test` hangs)**: Upstream `proxyReq` connections
+  are now terminated when the client disconnects, fixing half-open socket leaks; the admin
+  session cleanup timer and the SSE heartbeat timer are `.unref()`-ed so the test run exits
+  cleanly instead of hanging until timeout.
+- **E2E data isolation**: `session.js` / `audit.js` respect the `LODGEMAN_DATA` env var for
+  the data directory; E2E tests no longer pollute the real `data/` (`sessions.json` /
+  `audit.log`).
+
+### Improvements
+
+- **`.dockerignore` hardening**: Exclude `_dev/`, `.opencode/`, `test-results/`, `scripts/`,
+  `playwright.config.js`, and `ui-visual-check.json` from the build context so development
+  leftovers never get shipped.
+
 ## 1.0.7 (2026-07-22)
 
 ### Fixes

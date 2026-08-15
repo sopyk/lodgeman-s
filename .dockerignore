@@ -10,3 +10,9 @@ data/
 docker-compose.yml
 docker/
 LICENSE
+_dev/
+.opencode/
+test-results/
+scripts/
+playwright.config.js
+ui-visual-check.json

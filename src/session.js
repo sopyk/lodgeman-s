@@ -1,7 +1,10 @@
 const fs = require('fs');
 const path = require('path');
 
-const SESSION_PATH = path.join(__dirname, '..', 'data', 'sessions.json');
+// 数据目录可通过 LODGEMAN_DATA 覆盖（E2E 隔离用），默认仓库 data/。
+const SESSION_PATH = process.env.LODGEMAN_DATA
+  ? path.join(process.env.LODGEMAN_DATA, 'sessions.json')
+  : path.join(__dirname, '..', 'data', 'sessions.json');
 
 function loadSessions() {
   try {
