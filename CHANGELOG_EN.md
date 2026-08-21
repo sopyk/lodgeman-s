@@ -2,10 +2,7 @@
 
 # Changelog
 
-## 1.1.0-rc.1 (2026-08-15) [Release Candidate]
-
-> **⚠️ RC notice**: This is a release candidate for acceptance testing only — do not use it
-> in production yet. Upgrade to 1.1.0 when the stable release is published.
+## 1.1.0 (2026-08-21)
 
 ### New Features
 
