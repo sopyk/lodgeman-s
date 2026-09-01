@@ -2,6 +2,12 @@
 
 # 更新日志
 
+## 1.1.1 (2026-09-01)
+
+### 修复
+
+- **鉴权登录页密码栏眼睛图标切换失效**：点击眼睛按钮后密码始终显示为圆点，无法切换为明文。根因：v1.0.5 引入 `pwd-mask` CSS（`-webkit-text-security:disc`）以绕过 Chrome 密码管理器自动填充，但 `auth.js` 的 onclick handler 只切换了 `input.type`，未同步移除/添加 `pwd-mask` class，导致 CSS 遮盖始终生效。
+
 ## 1.1.0 (2026-08-21)
 
 ### 新功能

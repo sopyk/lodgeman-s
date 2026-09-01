@@ -2,6 +2,17 @@
 
 # Changelog
 
+## 1.1.1 (2026-09-01)
+
+### Fixes
+
+- **Auth page password toggle (eye icon) not working**: Clicking the eye button
+  keeps password as dots and never reveals plaintext. Root cause: v1.0.5 introduced
+  `pwd-mask` CSS (`-webkit-text-security:disc`) to bypass Chrome password manager
+  auto-fill, but the `auth.js` onclick handler only toggled `input.type` without
+  adding/removing the `pwd-mask` class, so the CSS masking remained active at all
+  times.
+
 ## 1.1.0 (2026-08-21)
 
 ### New Features
