@@ -527,6 +527,9 @@ ${successMsg ? `<div class="alert alert-success">${esc(decodeUrlMsg(successMsg))
 当后端在宿主机、门房大爷在 Docker 桥接容器，地址填 <code>host.docker.internal</code><br>
 其他情况填自定义地址（仅支持 http 协议）
 </div>
+<div style="font-size:.72rem;color:#888;padding:.25rem 0 0;line-height:1.5">
+<strong>透传 Host：</strong> 开启后代理将原始域名写入 <code>Host</code> 头，并补全 <code>X-Forwarded-Host / Proto / For</code>；关闭时后端收到的是目标地址的 IP Host（<code>127.0.0.1:port</code>）。后端需要根据域名做多站点路由或生成回调 URL 时勾选。
+</div>
 </div>
 
 <div class="card">
