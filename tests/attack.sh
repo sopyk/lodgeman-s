@@ -21,9 +21,10 @@ PASSED=0; FAILED=0; TOTAL=0
 
 setup() {
   # 备份容器当前配置
-  docker cp "$CONTAINER":/app/config/routes.yaml /tmp/lodgeman-routes.bak 2>/dev/null || true
-  # 写入测试配置
-  docker cp /dev/stdin "$CONTAINER":/app/config/routes.yaml << 'YAML' 2>/dev/null || true
+  docker exec "$CONTAINER" sh -c 'cat /app/config/routes.yaml' > /tmp/lodgeman-routes.bak 2>/dev/null || true
+  # 写入测试配置（用 exec + cat 而非 docker cp：bind-mount 单文件不可被 docker cp
+  # 覆盖 / 目录挂载下 docker cp /dev/stdin 会生成指向 /proc/self/fd/0 的坏符号链接）
+  docker exec -i "$CONTAINER" sh -c 'cat > /app/config/routes.yaml' << 'YAML' 2>/dev/null || true
 port: 4082
 password: testpass
 admin_username: admin
@@ -45,7 +46,7 @@ YAML
 }
 
 cleanup() {
-  docker cp /tmp/lodgeman-routes.bak "$CONTAINER":/app/config/routes.yaml 2>/dev/null || true
+  docker exec -i "$CONTAINER" sh -c 'cat > /app/config/routes.yaml' < /tmp/lodgeman-routes.bak 2>/dev/null || true
   rm -f /tmp/lodgeman-routes.bak
   docker restart "$CONTAINER" >/dev/null 2>&1
 }
