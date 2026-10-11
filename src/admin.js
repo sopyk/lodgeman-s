@@ -386,6 +386,25 @@ function renderLogin(req, res, config) {
 
 // ── Dashboard ──
 
+// 统一时间显示：YYYY/M/D HH:mm:ss（24 小时制，月份/日期去前导 0）。
+// 不依赖系统 locale —— small-ICU 容器（如 Alpine nodejs）里 zh-CN 会回退成
+// 英文 M/D/YYYY 格式，必须显式拼接。
+function fmtTs(ts, tz) {
+  const timeZone = tz || 'UTC';
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone, year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
+  }).formatToParts(ts);
+  const p = {};
+  for (const part of parts) {
+    if (part.type !== 'literal') p[part.type] = part.value;
+  }
+  const m = String(parseInt(p.month, 10));
+  const d = String(parseInt(p.day, 10));
+  const hh = p.hour === '24' ? '00' : p.hour;
+  return `${p.year}/${m}/${d} ${hh}:${p.minute}:${p.second}`;
+}
+
 function renderDashboard(req, res, backend, editingIdx, editError, successMsg) {
   const { config, sessions } = backend;
   const now = Date.now();
@@ -455,8 +474,8 @@ ${er ? `<div style="padding:.3rem .6rem .5rem;background:#fef2f2;font-size:.78re
 <td>${s.host || ''}</td>
 <td title="${esc(s.userAgent || '')}">${esc((s.userAgent || '').slice(0, 30))}</td>
 <td>${s.ip || ''}</td>
-<td style="font-size:.78rem;color:#666;white-space:nowrap">${new Date(s.createdAt).toLocaleString('zh-CN', {timeZone:config.timezone||'UTC'})}</td>
-<td style="font-size:.78rem;color:#666;white-space:nowrap">${new Date(s.expiresAt).toLocaleString('zh-CN', {timeZone:config.timezone||'UTC'})}</td>
+<td style="font-size:.78rem;color:#666;white-space:nowrap">${fmtTs(s.createdAt, config.timezone)}</td>
+<td style="font-size:.78rem;color:#666;white-space:nowrap">${fmtTs(s.expiresAt, config.timezone)}</td>
 <td>${s._type === 'admin' ? '<span style="color:#999;font-size:.75rem">—</span>' : `<form method="post" action="/_admin/kick" style="display:inline"><input type="hidden" name="sid" value="${s.id}"><button class="btn btn-sm btn-outline">踢下线</button></form>`}</td>
 </tr>`).join('');
 
@@ -526,6 +545,9 @@ ${successMsg ? `<div class="alert alert-success">${esc(decodeUrlMsg(successMsg))
 当后端与门房大爷在同一网络（裸机、同容器、<code>--network host</code>），地址填 <code>127.0.0.1</code><br>
 当后端在宿主机、门房大爷在 Docker 桥接容器，地址填 <code>host.docker.internal</code><br>
 其他情况填自定义地址（仅支持 http 协议）
+</div>
+<div style="font-size:.72rem;color:#888;padding:.25rem 0 0;line-height:1.5">
+<strong>透传 Host：</strong> 开启后代理将原始域名写入 <code>Host</code> 头，并补全 <code>X-Forwarded-Host / Proto / For</code>；关闭时后端收到的是目标地址的 IP Host（<code>127.0.0.1:port</code>）。后端需要根据域名做多站点路由或生成回调 URL 时勾选。
 </div>
 </div>
 
@@ -906,7 +928,7 @@ function renderAbout(req, res, backend) {
 <h1 style="font-size:1.5rem;margin:0 0 .25rem">门房大爷LodgeManS</h1>
 <p style="color:#666;font-size:.85rem;margin:0 0 1.5rem">统一认证网关</p>
 <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.5rem">
-<div class="stat-item"><div class="num">v1.1.1</div><div style="font-size:.8rem;color:#888">当前版本</div></div>
+<div class="stat-item"><div class="num">v1.1.2</div><div style="font-size:.8rem;color:#888">当前版本</div></div>
 <div class="stat-item"><div class="num">MIT</div><div style="font-size:.8rem;color:#888">开源许可</div></div>
 </div>
 <h2 style="font-size:1.05rem;margin:0 0 .5rem">项目信息</h2>

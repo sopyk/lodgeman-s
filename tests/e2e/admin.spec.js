@@ -20,6 +20,28 @@ async function loginAdmin(page) {
   await expect(page.getByRole('link', { name: '仪表盘' })).toBeVisible();
 }
 
+test('登录页时长下拉包含「1 年」选项（365 天）且不再有「永久」', async ({ page }) => {
+  await page.goto('/_login');
+  const sel = page.locator('select[name="duration"]');
+  await expect(sel.locator('option[value="31536000"]')).toHaveText('1 年');
+  // 「永久」措辞应已移除
+  await expect(sel.locator('option', { hasText: '永久' })).toHaveCount(0);
+});
+
+test('仪表盘会话时间格式为 YYYY/M/D HH:mm:ss（24 小时制、无前导零、无 AM/PM）', async ({ page }) => {
+  await loginAdmin(page);
+  // 管理员登录本身产生一条会话，其创建/过期时间由 fmtTs 渲染
+  const cells = page.locator('td[style*="nowrap"]');
+  await expect(cells.first()).toBeVisible();
+  const texts = await cells.allInnerTexts();
+  expect(texts.length).toBeGreaterThan(0);
+  for (const t of texts) {
+    // 严格断言：年份 4 位、月/日去前导零、24 小时制
+    expect(t).toMatch(/^\d{4}\/\d{1,2}\/\d{1,2} \d{2}:\d{2}:\d{2}$/);
+    expect(t).not.toMatch(/AM|PM/);
+  }
+});
+
 // 通过添加路由表单新建一条路由（勾选 pass_host 与否由参数决定）
 async function addRoute(page, { host, exempt = '', passHost = false, description = 'e2e route' }) {
   await page.getByRole('button', { name: /添加路由/ }).first().click(); // #addRouteToggle

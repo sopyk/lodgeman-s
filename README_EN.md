@@ -40,7 +40,7 @@ Once traffic reaches LodgeManS, add routing rules via the admin panel (`/_admin`
 | **Admin panel** | Manage routes, view active sessions, kick users, reload config in browser |
 | **Password security** | Auto-hashed with scrypt at startup, no plaintext in config |
 | **Audit log** | Logs logins, logouts, route changes, session operations |
-| **Session duration** | 15 min to permanent, selectable on login page |
+| **Session duration** | 15 min to 1 year, selectable on login page |
 | **Session note** | Optional label on login for easy identification in admin panel |
 | **Docker support** | Ready-to-use Docker images |
 | **Frontend-agnostic** | Works behind Cloudflare Tunnel, Caddy, Nginx, or directly |

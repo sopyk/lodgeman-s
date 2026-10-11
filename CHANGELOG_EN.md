@@ -2,6 +2,18 @@
 
 # Changelog
 
+## 1.1.2 (2026-10-10)
+
+### Improvements
+
+- **Consistent date format in admin dashboard**: Session "created/expiry" timestamps
+  no longer rely on system locale (in small-ICU containers `zh-CN` fell back to the
+  US-style `M/D/YYYY`); now explicitly formatted as `YYYY/M/D HH:mm:ss` (24-hour,
+  no leading zeros) in the configured timezone.
+- **Login duration "永久" (permanent) renamed to "1 Year"**: previously "permanent"
+  actually meant 365 days, easily mistaken for a monthly long session; now labeled
+  explicitly as "1 Year".
+
 ## 1.1.1 (2026-09-01)
 
 ### Fixes
@@ -163,7 +175,7 @@ LodgeManS — Unified Auth Gateway. One login to secure multiple backend service
   - Config reload without restart
 - **First-time setup**: registration form on first visit when no admin password is set
 - **Audit log**: records logins, logouts, route changes, session operations
-- **Session duration**: 15 minutes to permanent, selectable on login page
+- **Session duration**: 15 minutes to 1 year, selectable on login page
 - **Session note**: optional label on login for easy identification in admin panel
 - **Password security**: auto scrypt-hashed at startup, no plaintext in config
 - **Docker support**: Dockerfile and Compose configuration included
